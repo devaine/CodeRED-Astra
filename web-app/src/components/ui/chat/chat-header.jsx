@@ -1,5 +1,5 @@
 import React from "react";
-import ActionButton from "src/components/Button/ActionButton.jsx";
+import ActionButton from "src/components/ui/Button/ActionButton.jsx";
 
 export default function ChatHeader({ title = "AI Assistant" }) {
   // Delete chat log (frontend + backend)
