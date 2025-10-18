@@ -2,14 +2,12 @@
 
 name: Build and Deploy
 
-# This workflow runs only on pushes to the 'main' branch
 on:
   push:
     branches: ["main"]
 
 jobs:
   build-and-deploy:
-    # Set permissions for the job to read contents and write to GitHub Packages
     permissions:
       contents: read
       packages: write
@@ -28,17 +26,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- NEW STEP TO FIX THE CACHING ERROR ---
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ghcr.io/${{ github.repository }}/web-app
-            ghcr.io/${{ github.repository }}/rust-engine
 
       # --- Build and push one image for each service ---
       - name: Build and push web-app image 🚀
@@ -46,8 +35,7 @@ jobs:
         with:
           context: ./web-app
           push: true
-          tags: ${{ steps.meta.outputs.tags_web-app }}
-          labels: ${{ steps.meta.outputs.labels_web-app }}
+          tags: ghcr.io/${{ github.repository }}/web-app:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -56,8 +44,7 @@ jobs:
         with:
           context: ./rust-engine
           push: true
-          tags: ${{ steps.meta.outputs.tags_rust-engine }}
-          labels: ${{ steps.meta.outputs.labels_rust-engine }}
+          tags: ghcr.io/${{ github.repository }}/rust-engine:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
