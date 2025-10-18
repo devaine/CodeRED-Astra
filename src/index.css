@@ -1,23 +1,9 @@
+@import "./styles/theme.css" layer(theme);
+@import "tailwindcss";
+@layer theme, components;
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-.light {
-  --paragraph: 16, 17, 20;
-  --background: 229, 230, 240;
-  --primary: 41, 49, 97;
-  --secondary: 122, 137, 220;
-  --accent: 32, 55, 203;
-  background: rgba(var(--background));
-}
-.dark {
-  --paragraph: 235, 236, 239;
-  --background: 15, 16, 26;
-  --primary: 158, 166, 214;
-  --secondary: 35, 50, 133;
-  --accent: 52, 75, 223;
-  background: rgba(var(--background));
-}
 
 body {
   margin: 0;
@@ -26,4 +12,5 @@ body {
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: rgba(var(--background));
 }
