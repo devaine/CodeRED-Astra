@@ -1,14 +1,24 @@
-@import "tailwindcss";
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
 
-@theme {
-  --color-primary: rgba(15, 40, 98);
-  --color-secondary: rgba(79, 95, 118);
-  --color-accent: rgba(158, 54, 58);
-  --color-paragraph: rgba(255, 255, 255);
-  --color-background: rgba(9, 31, 54);
+:root {
+  --color-primary: 15 40 98;
+  --color-secondary: 79 95 118;
+  --color-accent: 158 54 58;
+  --color-paragraph: 255 255 255;
+  --color-background: 9 31 54;
 }
 
 body {
   margin: 0;
-  background: rgba(var(--background));
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-paragraph));
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial;
 }
