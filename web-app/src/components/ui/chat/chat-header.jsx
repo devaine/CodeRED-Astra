@@ -31,8 +31,8 @@ export default function ChatHeader({ title = "AI Assistant" }) {
             Ask anything — AI is listening
           </p>
         </div>
-        <ActionButton type="add" onClick={handleNewChat}></ActionButton>
-        <ActionButton type="delete" onClick={handleDeleteChat}></ActionButton>
+        <ActionButton children='New Chat' type="add" onClick={handleNewChat}></ActionButton>
+        <ActionButton children='Delete Chat'type="delete" onClick={handleDeleteChat}></ActionButton>
       </div>
 
     </header>

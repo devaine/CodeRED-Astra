@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-
+import ActionButton from "../Button/ActionButton";
 export default function MessageInput({ onSend }) {
   const [text, setText] = useState("");
 
@@ -19,12 +19,8 @@ export default function MessageInput({ onSend }) {
           placeholder="Type a message..."
           className="flex-1 rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <button
-          type="submit"
-          className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md"
-        >
-          Send
-        </button>
+        <ActionButton children="Send" type="submit"></ActionButton>
+      
       </div>
     </form>
   );
