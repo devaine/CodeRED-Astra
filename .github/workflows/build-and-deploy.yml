@@ -1,56 +1,96 @@
-# For information on GITHUB_TOKEN: https://docs.github.com/en/actions/concepts/security/github_token 
-# For information on github.actor: https://github.com/orgs/community/discussions/62108
+# .github/workflows/build-and-deploy.yml
 
 name: Build and Deploy
 
+# This workflow runs only on pushes to the 'main' branch
 on:
-  pull_request:
-    branches: ["main"]
   push:
     branches: ["main"]
 
-env:
-  CONTAINER_NAME: codered-astra
-  CONTAINER_TAG: ghcr.io/${{ github.repository_owner }}/codered-astra:latest
-
 jobs:
-  # Set permissions for the job
-  build:
+  build-and-deploy:
+    # Set permissions for the job to read contents and write to GitHub Packages
     permissions:
-          contents: read
-          packages: write
-          attestations: write
-          id-token: write
+      contents: read
+      packages: write
 
-    name: Build Docker Image
+    name: Build Images and Deploy to Server
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Login to Docker Hub
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }} # User that commits
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          context: .
-          platforms: linux/amd64
-          push: true
-          tags: ${{ env.CONTAINER_TAG }}
+          images: |
+            ghcr.io/${{ github.repository }}/frontend
+            ghcr.io/${{ github.repository }}/nodejs-backend
+            ghcr.io/${{ github.repository }}/rust-engine
 
-# WIP: For deployment
-  deploy:
-    name: Deploy Docker Image to Server
-    runs-on: self-hosted
-    needs: build
-    steps:
+      # --- Build and push one image for each service ---
+      - name: Build and push frontend image 🚀
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta.outputs.tags_frontend }}
+          labels: ${{ steps.meta.outputs.labels_frontend }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Node.js backend image 🚀
+        uses: docker/build-push-action@v6
+        with:
+          context: ./nodejs-backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags_nodejs-backend }}
+          labels: ${{ steps.meta.outputs.labels_nodejs-backend }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Rust engine image 🚀
+        uses: docker/build-push-action@v6
+        with:
+          context: ./rust-engine
+          push: true
+          tags: ${{ steps.meta.outputs.tags_rust-engine }}
+          labels: ${{ steps.meta.outputs.labels_rust-engine }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- Deploy the new images to your server ---
+      - name: Deploy to server via SSH ☁️
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Navigate to your project directory on the server
+            cd /var/www/codered-astra
+
+            # Export secrets as environment variables for Docker Compose
+            export GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}'
+            export MYSQL_DATABASE='${{ secrets.MYSQL_DATABASE }}'
+            export MYSQL_USER='${{ secrets.MYSQL_USER }}'
+            export MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}'
+            export MYSQL_ROOT_PASSWORD='${{ secrets.MYSQL_ROOT_PASSWORD }}'
+
+            # Set the image tag to the specific commit SHA for a precise deployment
+            export IMAGE_TAG=${{ github.sha }}
+
+            # Pull the new images you just pushed to the registry
+            docker-compose pull
+
+            # Stop the old containers and start new ones with the updated images
+            docker-compose up -d --force-recreate

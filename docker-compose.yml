@@ -1,0 +1,53 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  web-app:
+    build:
+      context: ./web-app
+    restart: always
+    ports:
+      - "80:3000"
+    environment:
+      # The connection string remains the same, but points to the 'mysql' service
+      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+      - RUST_ENGINE_URL=http://rust-engine:8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - mysql # <-- Updated dependency
+      - rust-engine
+
+  rust-engine:
+    build:
+      context: ./rust-engine
+    restart: always
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+    depends_on:
+      - mysql # <-- Updated dependency
+
+  # --- Key Changes are in this section ---
+  mysql: # <-- Renamed service for clarity
+    image: mysql:8.0 # <-- CHANGED: Using the official MySQL 8.0 image
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      # CHANGED: Binds port 8080 to localhost ONLY.
+      - "127.0.0.1:8080:80"
+    environment:
+      - PMA_HOST=mysql
+    depends_on:
+      - mysql
+
+volumes:
+  mysql-data: # Renamed volume for clarity (optional but good practice)
