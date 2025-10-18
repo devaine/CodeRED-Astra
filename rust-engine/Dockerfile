@@ -9,11 +9,17 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy ONLY Cargo.toml to resolve dependencies
+# Copy ONLY Cargo.toml
 COPY Cargo.toml ./
 
-# KEY CHANGE: Generate lock file and fetch dependencies inside the container
+# --- KEY CHANGE: Create a dummy main.rs BEFORE fetching dependencies ---
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+
+# Now, generate the lock file and fetch dependencies
 RUN cargo update && cargo fetch
+
+# Remove the dummy file before copying the real source code
+RUN rm -rf src
 
 # Now copy the rest of your source code
 COPY src ./src
