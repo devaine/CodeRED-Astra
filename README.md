@@ -1,16 +1,75 @@
-# React + Vite
+# CodeRED-Astra 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A hackathon-ready project with React frontend and Rust backend engine.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+# 1. Setup environment
+cp .env.example .env
+# Edit .env with your credentials
 
-## React Compiler
+# 2. Start everything with Docker
+docker-compose up --build
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+# 3. Access your app
+# Frontend: http://localhost
+# API: http://localhost:8000
+# Database Admin: http://127.0.0.1:8080
+```
 
-## Expanding the ESLint configuration
+## Development
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**Frontend (React + Vite)**:
+```bash
+cd web-app
+npm install
+npm run dev  # http://localhost:5173
+```
+
+**Backend (Rust)**:
+```bash
+cd rust-engine  
+cargo run    # http://localhost:8000
+```
+
+## Architecture
+
+- **Frontend**: React 18 + Vite + Tailwind CSS
+- **Backend**: Rust + Warp + SQLx
+- **Database**: MySQL 8.0 + phpMyAdmin
+- **API**: RESTful endpoints with CORS enabled
+- **Docker**: Full containerization for easy deployment
+
+## Project Structure
+
+```
+├── web-app/           # React frontend
+│   ├── src/
+│   │   ├── App.jsx    # Main component
+│   │   └── main.jsx   # Entry point
+│   └── Dockerfile
+├── rust-engine/       # Rust backend
+│   ├── src/
+│   │   └── main.rs    # API server
+│   └── Dockerfile
+├── docker-compose.yml # Full stack orchestration
+└── .env.example      # Environment template
+```
+
+## Team Workflow
+
+- **Frontend devs**: Work in `web-app/src/`, use `/api/*` for backend calls
+- **Backend devs**: Work in `rust-engine/src/`, add endpoints to main.rs
+- **Database**: Access phpMyAdmin at http://127.0.0.1:8080
+
+## Features
+
+✅ Hot reload for both frontend and backend  
+✅ Automatic API proxying from React to Rust  
+✅ Database connection with graceful fallback  
+✅ CORS configured for cross-origin requests  
+✅ Production-ready Docker containers  
+✅ Health monitoring and status dashboard  
+
+Ready for your hackathon! See `DEVELOPMENT.md` for detailed setup instructions.

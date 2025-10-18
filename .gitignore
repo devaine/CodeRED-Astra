@@ -21,6 +21,9 @@ dist
 turbo-build.log
 turbo-host.log
 
+# rust
+rust-engine/target
+
 # debug
 npm-debug.log*
 yarn-debug.log*
