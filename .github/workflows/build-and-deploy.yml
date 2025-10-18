@@ -28,37 +28,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # --- NEW STEP TO FIX THE CACHING ERROR ---
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository }}/frontend
-            ghcr.io/${{ github.repository }}/nodejs-backend
+            ghcr.io/${{ github.repository }}/web-app
             ghcr.io/${{ github.repository }}/rust-engine
 
       # --- Build and push one image for each service ---
-      - name: Build and push frontend image 🚀
+      - name: Build and push web-app image 🚀
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          context: ./web-app
           push: true
-          tags: ${{ steps.meta.outputs.tags_frontend }}
-          labels: ${{ steps.meta.outputs.labels_frontend }}
+          tags: ${{ steps.meta.outputs.tags_web-app }}
+          labels: ${{ steps.meta.outputs.labels_web-app }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push Node.js backend image 🚀
-        uses: docker/build-push-action@v6
-        with:
-          context: ./nodejs-backend
-          push: true
-          tags: ${{ steps.meta.outputs.tags_nodejs-backend }}
-          labels: ${{ steps.meta.outputs.labels_nodejs-backend }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push Rust engine image 🚀
+      - name: Build and push Rust engine image ⚙️
         uses: docker/build-push-action@v6
         with:
           context: ./rust-engine
@@ -76,21 +69,12 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Navigate to your project directory on the server
             cd /var/www/codered-astra
-
-            # Export secrets as environment variables for Docker Compose
             export GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}'
             export MYSQL_DATABASE='${{ secrets.MYSQL_DATABASE }}'
             export MYSQL_USER='${{ secrets.MYSQL_USER }}'
             export MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}'
             export MYSQL_ROOT_PASSWORD='${{ secrets.MYSQL_ROOT_PASSWORD }}'
-
-            # Set the image tag to the specific commit SHA for a precise deployment
             export IMAGE_TAG=${{ github.sha }}
-
-            # Pull the new images you just pushed to the registry
             docker-compose pull
-
-            # Stop the old containers and start new ones with the updated images
             docker-compose up -d --force-recreate
