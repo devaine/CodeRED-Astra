@@ -1,8 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": "web-app/src"
+    "baseUrl": "./"
   },
-  "include": [
-    "web-app/src"
-  ]
+  "include": ["src"]
 }

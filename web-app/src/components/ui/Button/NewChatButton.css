@@ -1,0 +1,13 @@
+.custom-btn {
+  background-color: white !important;
+  border: 2px solid #0F2862 !important;
+  color: #0F2862 !important;
+  transition: all 0.25s ease;
+}
+
+.custom-btn:hover,
+.custom-btn:focus {
+  background-color: #0F2862 !important;
+  color: white !important;
+  border-color: #0F2862 !important;
+}
