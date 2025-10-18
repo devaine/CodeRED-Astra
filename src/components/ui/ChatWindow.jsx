@@ -1,5 +1,5 @@
 import React from "react";
-
+import { useRef } from "react";
 function MessageBubble({ message }) {
   const isUser = message.role === "user";
   return (
@@ -16,6 +16,15 @@ function MessageBubble({ message }) {
 }
 
 export default function ChatWindow({ messages }) {
+  const chatRef = useRef(null);
+  // Auto-scroll to bottom when new messages appear
+  useEffect(() => {
+    chatRef.current?.scrollTo({
+      top: chatRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages]);
+
   return (
     <main className="flex-1 overflow-auto p-2 bg-gradient-to-b from-slate-900 to-slate-800">
       <div className="space-y-2">
