@@ -1,5 +1,6 @@
-import React from "react";
-import { useRef } from "react";
+import React, { useRef, useEffect } from "react";
+
+
 function MessageBubble({ message }) {
   const isUser = message.role === "user";
   return (

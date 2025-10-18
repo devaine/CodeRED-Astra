@@ -1,5 +1,5 @@
 import React from "react";
-import ChatLayout from "src/components/ui/ChatLayout";
+import ChatLayout from "../components/ui/ChatLayout";
 
 function App() {
   return (
