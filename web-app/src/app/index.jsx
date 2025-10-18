@@ -1,5 +1,5 @@
 import React from "react";
-import ChatLayout from "../components/layouts/chat-layout.jsx";
+import ChatLayout from "src/components/layouts/chat-layout";
 
 function App() {
   return (

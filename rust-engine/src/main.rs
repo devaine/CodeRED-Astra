@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     // Load environment variables
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     let database_url = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "mysql://astraadmin:password@mysql:3306/astra".to_string());

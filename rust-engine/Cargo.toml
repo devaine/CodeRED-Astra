@@ -1,10 +1,13 @@
+# rust-engine/Cargo.toml
+
 [package]
 name = "rust-engine"
-version = "0.1.0"
-edition = "2021"
+version = "0.1.1"
+edition = "2024"
 
+# --- CORRECTED DEPENDENCIES ---
 [dependencies]
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.38.0", features = ["full"] }
 warp = { version = "0.4.2", features = ["server"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -12,6 +15,5 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "mysql", "chrono
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-dotenv = "0.15"
-cors = "0.1.0"
+dotenvy = "0.15.7" # Using 'dotenvy' as 'dotenv' is unmaintained
 anyhow = "1.0"

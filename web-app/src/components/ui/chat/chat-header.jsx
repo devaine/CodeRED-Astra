@@ -1,5 +1,5 @@
 import React from "react";
-import ActionButton from "../Button/ActionButton.jsx";
+import ActionButton from "src/components/ui/Button/ActionButton.jsx";
 
 export default function ChatHeader({ title = "AI Assistant" }) {
   // Delete chat log (frontend + backend)
@@ -18,7 +18,7 @@ export default function ChatHeader({ title = "AI Assistant" }) {
       setMessages([]);
     }
   };
-  
+
   return (
     <header className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white">
       <div className="flex items-center gap-3">
@@ -34,7 +34,6 @@ export default function ChatHeader({ title = "AI Assistant" }) {
         <ActionButton children='New Chat' type="add" onClick={handleNewChat}></ActionButton>
         <ActionButton children='Delete Chat'type="delete" onClick={handleDeleteChat}></ActionButton>
       </div>
-
     </header>
   );
 }
