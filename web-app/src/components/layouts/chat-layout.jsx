@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import ChatHeader from "./ChatHeader";
-import ChatWindow from "./ChatWindow";
-import MessageInput from "./MessageInput";
+import ChatHeader from "src/components/ui/chat/chat-header";
+import ChatWindow from "src/components/ui/chat/chat-window";
+import MessageInput from "src/components/ui/chat/message-input";
 
 export default function ChatLayout() {
   const [messages, setMessages] = useState([
