@@ -15,7 +15,11 @@ pub struct FileRecord {
 
 impl FileRecord {
     #[allow(dead_code)]
-    pub fn new(filename: impl Into<String>, path: impl Into<String>, description: Option<String>) -> Self {
+    pub fn new(
+        filename: impl Into<String>,
+        path: impl Into<String>,
+        description: Option<String>,
+    ) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             filename: filename.into(),

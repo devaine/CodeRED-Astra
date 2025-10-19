@@ -2,7 +2,7 @@ FROM node:23-alpine
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm i
 COPY . .
 RUN npm run format && npm run build
 EXPOSE 3000

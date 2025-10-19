@@ -1,9 +1,9 @@
 use crate::gemini_client::{demo_text_embedding, generate_text_with_model, DEMO_EMBED_DIM};
 use crate::vector;
 use crate::vector_db::QdrantClient;
-use sqlx::MySqlPool;
 use anyhow::Result;
-use tracing::{info, error};
+use sqlx::MySqlPool;
+use tracing::{error, info};
 
 pub struct FileWorker {
     pool: MySqlPool,
@@ -12,7 +12,8 @@ pub struct FileWorker {
 
 impl FileWorker {
     pub fn new(pool: MySqlPool) -> Self {
-        let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
+        let qdrant_url =
+            std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
         let qdrant = QdrantClient::new(&qdrant_url);
         Self { pool, qdrant }
     }
@@ -70,8 +71,8 @@ impl FileWorker {
             .bind(file_id)
             .fetch_one(&self.pool)
             .await?;
-    let filename: String = row.get("filename");
-    let _path: String = row.get("path");
+        let filename: String = row.get("filename");
+        let _path: String = row.get("path");
 
         // Stage 1: Gemini 2.5 Flash for description
         let desc = generate_text_with_model(
@@ -82,11 +83,13 @@ impl FileWorker {
         )
         .await
         .unwrap_or_else(|e| format!("[desc error: {}]", e));
-        sqlx::query("UPDATE files SET description = ?, analysis_status = 'InProgress' WHERE id = ?")
-            .bind(&desc)
-            .bind(file_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "UPDATE files SET description = ?, analysis_status = 'InProgress' WHERE id = ?",
+        )
+        .bind(&desc)
+        .bind(file_id)
+        .execute(&self.pool)
+        .await?;
 
         // Stage 2: Gemini 2.5 Pro for deep vector graph data
         let vector_graph = generate_text_with_model(
@@ -111,18 +114,22 @@ impl FileWorker {
         }
 
         // Mark file as ready
-        sqlx::query("UPDATE files SET pending_analysis = FALSE, analysis_status = 'Completed' WHERE id = ?")
-            .bind(file_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "UPDATE files SET pending_analysis = FALSE, analysis_status = 'Completed' WHERE id = ?",
+        )
+        .bind(file_id)
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
     async fn mark_failed(&self, file_id: &str, reason: &str) -> Result<()> {
-        sqlx::query("UPDATE files SET analysis_status = 'Failed', pending_analysis = TRUE WHERE id = ?")
-            .bind(file_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "UPDATE files SET analysis_status = 'Failed', pending_analysis = TRUE WHERE id = ?",
+        )
+        .bind(file_id)
+        .execute(&self.pool)
+        .await?;
         sqlx::query("UPDATE files SET description = COALESCE(description, ?) WHERE id = ?")
             .bind(format!("[analysis failed: {}]", reason))
             .bind(file_id)

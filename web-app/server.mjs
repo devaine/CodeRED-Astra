@@ -15,6 +15,7 @@ const RUST_ENGINE_BASE =
   process.env.RUST_ENGINE_BASE ||
   process.env.RUST_ENGINE_URL ||
   'http://rust-engine:8000';
+const STORAGE_DIR = path.resolve(process.env.ASTRA_STORAGE || '/app/storage');
 
 app.set('trust proxy', true);
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -42,6 +43,9 @@ app.post('/api/files/import-demo', async (req, res) => {
 // Serve static frontend
 const distDir = path.resolve(__dirname, 'dist');
 app.use(express.static(distDir));
+
+// Expose imported files for the UI (read-only)
+app.use('/storage', express.static(STORAGE_DIR));
 
 // SPA fallback (Express 5 requires middleware instead of bare '*')
 app.use((req, res) => {

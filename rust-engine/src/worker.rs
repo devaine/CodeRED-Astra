@@ -14,7 +14,8 @@ pub struct Worker {
 
 impl Worker {
     pub fn new(pool: MySqlPool) -> Self {
-        let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
+        let qdrant_url =
+            std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
         let qdrant = QdrantClient::new(&qdrant_url);
         Self { pool, qdrant }
     }
@@ -56,18 +57,22 @@ impl Worker {
     async fn fetch_and_claim(&self) -> Result<Option<QueryRecord>> {
         // Note: MySQL transactional SELECT FOR UPDATE handling is more complex; for this hackathon scaffold
         // we do a simple two-step: select one queued id, then update it to InProgress if it is still queued.
-        if let Some(row) = sqlx::query("SELECT id, payload FROM queries WHERE status = 'Queued' ORDER BY created_at LIMIT 1")
-            .fetch_optional(&self.pool)
-            .await?
+        if let Some(row) = sqlx::query(
+            "SELECT id, payload FROM queries WHERE status = 'Queued' ORDER BY created_at LIMIT 1",
+        )
+        .fetch_optional(&self.pool)
+        .await?
         {
             use sqlx::Row;
             let id: String = row.get("id");
             let payload: serde_json::Value = row.get("payload");
 
-            let updated = sqlx::query("UPDATE queries SET status = 'InProgress' WHERE id = ? AND status = 'Queued'")
-                .bind(&id)
-                .execute(&self.pool)
-                .await?;
+            let updated = sqlx::query(
+                "UPDATE queries SET status = 'InProgress' WHERE id = ? AND status = 'Queued'",
+            )
+            .bind(&id)
+            .execute(&self.pool)
+            .await?;
 
             if updated.rows_affected() == 1 {
                 let mut q = QueryRecord::new(payload);
@@ -90,7 +95,9 @@ impl Worker {
         let top_k = top_k.max(1).min(20);
 
         // Check cancellation
-        if self.is_cancelled(&q.id).await? { return Ok(()); }
+        if self.is_cancelled(&q.id).await? {
+            return Ok(());
+        }
 
         // Stage 3: search top-K in Qdrant
         let hits = match self.qdrant.search_top_k(emb.clone(), top_k).await {
@@ -115,7 +122,9 @@ impl Worker {
         };
 
         // Check cancellation
-        if self.is_cancelled(&q.id).await? { return Ok(()); }
+        if self.is_cancelled(&q.id).await? {
+            return Ok(());
+        }
 
         // Stage 4: fetch file metadata for IDs
         let mut files_json = Vec::new();
@@ -222,13 +231,18 @@ impl Worker {
 }
 
 fn build_relationships_prompt(query: &str, files: &Vec<serde_json::Value>) -> String {
-    let files_snippets: Vec<String> = files.iter().map(|f| format!(
-        "- id: {id}, filename: {name}, path: {path}, desc: {desc}",
-        id=f.get("id").and_then(|v| v.as_str()).unwrap_or(""),
-        name=f.get("filename").and_then(|v| v.as_str()).unwrap_or(""),
-        path=f.get("path").and_then(|v| v.as_str()).unwrap_or(""),
-        desc=f.get("description").and_then(|v| v.as_str()).unwrap_or("")
-    )).collect();
+    let files_snippets: Vec<String> = files
+        .iter()
+        .map(|f| {
+            format!(
+                "- id: {id}, filename: {name}, path: {path}, desc: {desc}",
+                id = f.get("id").and_then(|v| v.as_str()).unwrap_or(""),
+                name = f.get("filename").and_then(|v| v.as_str()).unwrap_or(""),
+                path = f.get("path").and_then(|v| v.as_str()).unwrap_or(""),
+                desc = f.get("description").and_then(|v| v.as_str()).unwrap_or("")
+            )
+        })
+        .collect();
     format!(
         "You are an assistant analyzing relationships STRICTLY within the provided files.\n\
         Query: {query}\n\
@@ -243,12 +257,21 @@ fn build_relationships_prompt(query: &str, files: &Vec<serde_json::Value>) -> St
     )
 }
 
-fn build_final_answer_prompt(query: &str, files: &Vec<serde_json::Value>, relationships: &str) -> String {
-    let files_short: Vec<String> = files.iter().map(|f| format!(
-        "- {name} ({id})",
-        id=f.get("id").and_then(|v| v.as_str()).unwrap_or(""),
-        name=f.get("filename").and_then(|v| v.as_str()).unwrap_or("")
-    )).collect();
+fn build_final_answer_prompt(
+    query: &str,
+    files: &Vec<serde_json::Value>,
+    relationships: &str,
+) -> String {
+    let files_short: Vec<String> = files
+        .iter()
+        .map(|f| {
+            format!(
+                "- {name} ({id})",
+                id = f.get("id").and_then(|v| v.as_str()).unwrap_or(""),
+                name = f.get("filename").and_then(|v| v.as_str()).unwrap_or("")
+            )
+        })
+        .collect();
     format!(
         "You are to compose a final answer to the user query using only the information from the files.\n\
         Query: {query}\n\

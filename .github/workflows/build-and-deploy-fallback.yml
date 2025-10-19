@@ -4,7 +4,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: ["main", "rust-dev"]
+    branches: ["gemini"]
 
 jobs:
   build-and-deploy:
@@ -45,15 +45,6 @@ jobs:
           cache-from: type=gha,scope=web-app
           cache-to: type=gha,mode=max,scope=web-app
 
-      - name: Build and push Rust engine image ⚙️
-        uses: docker/build-push-action@v6
-        with:
-          context: ./rust-engine
-          push: true
-          tags: ghcr.io/${{ steps.repo_name.outputs.name }}/rust-engine:${{ github.sha }}
-          cache-from: type=gha,scope=rust-engine
-          cache-to: type=gha,mode=max,scope=rust-engine
-
       - name: Ensure remote deploy directory exists
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -69,7 +60,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.yml,docker-compose.prod.yml,rust-engine/demo-data"
+          source: "docker-compose.yml,docker-compose.prod.yml"
           target: "/home/github-actions/codered-astra/"
 
       - name: Deploy to server via SSH ☁️

@@ -63,13 +63,21 @@ pub async fn generate_text_with_model(model: &str, prompt: &str) -> Result<Strin
     }
 
     #[derive(Deserialize)]
-    struct Part { text: Option<String> }
+    struct Part {
+        text: Option<String>,
+    }
     #[derive(Deserialize)]
-    struct Content { parts: Vec<Part> }
+    struct Content {
+        parts: Vec<Part>,
+    }
     #[derive(Deserialize)]
-    struct Candidate { content: Content }
+    struct Candidate {
+        content: Content,
+    }
     #[derive(Deserialize)]
-    struct Response { candidates: Option<Vec<Candidate>> }
+    struct Response {
+        candidates: Option<Vec<Candidate>>,
+    }
 
     let data: Response = serde_json::from_str(&txt).unwrap_or(Response { candidates: None });
     let out = data
