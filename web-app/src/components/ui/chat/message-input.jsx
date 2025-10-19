@@ -11,18 +11,15 @@ export default function MessageInput({ onSend }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 bg-slate-900">
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="bg-black">
+      <div className="flex shadow-lg">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a message..."
-          className="flex-1 rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 rounded-md shadow-2sx"
         />
-        <button
-          type="submit"
-          className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md"
-        >
+        <button type="submit" className="">
           Send
         </button>
       </div>
