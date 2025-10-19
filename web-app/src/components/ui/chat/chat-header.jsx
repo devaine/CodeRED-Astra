@@ -17,9 +17,10 @@ export default function ChatHeader({ title = "Schematic Spelunker" }) {
       setIngesting(true);
       const res = await fetch("/api/files/import-demo", { method: "POST" });
       const json = await res.json().catch(() => ({}));
-      setToast(
-        `Imported: ${json.imported ?? "?"}, Skipped: ${json.skipped ?? "?"}`
-      );
+      const imported = json.imported ?? "?";
+      const skipped = json.skipped ?? "?";
+      const summary = `Imported: ${imported}, Skipped: ${skipped}`;
+      setToast(json.error ? `${summary} - ${json.error}` : summary);
       setTimeout(() => setToast(""), 4000);
     } catch (e) {
       setToast("Import failed");
