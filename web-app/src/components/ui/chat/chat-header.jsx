@@ -1,16 +1,30 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Rocket } from "lucide-react";
 import DeleteButton from "src/components/ui/button/delete-button";
 import SchematicButton from "../button/schematic-button";
 
-export default function ChatHeader({ title = "Title of Chat" }) {
+export default function ChatHeader({
+  title = "Title of Chat",
+  onClear,
+  busy = false,
+  fileSummary,
+  errorMessage,
+}) {
   const isDebug = useMemo(() => {
     const p = new URLSearchParams(window.location.search);
     return p.get("debug") === "1";
   }, []);
   const [ingesting, setIngesting] = useState(false);
   const [toast, setToast] = useState("");
+  const [externalToast, setExternalToast] = useState("");
+
+  useEffect(() => {
+    if (!errorMessage) return;
+    setExternalToast(errorMessage);
+    const timer = window.setTimeout(() => setExternalToast(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [errorMessage]);
 
   async function triggerDemoIngest() {
     try {
@@ -39,7 +53,12 @@ export default function ChatHeader({ title = "Title of Chat" }) {
             <h1 className="text-lg font-semibold shadow-md shadow-indigo-600 bg-gray-900 px-6 py-2 rounded-4xl border-2 border-gray-800">
               {title}
             </h1>
-            <DeleteButton />
+            {fileSummary && (
+              <div className="text-xs text-slate-300 bg-gray-800/80 border border-gray-700 rounded px-3 py-1">
+                {fileSummary}
+              </div>
+            )}
+            <DeleteButton onClick={onClear} disabled={busy} />
             {isDebug && (
               <motion.button
                 onClick={triggerDemoIngest}
@@ -57,6 +76,11 @@ export default function ChatHeader({ title = "Title of Chat" }) {
         {toast && (
           <div className="mt-2 text-xs text-slate-300 bg-gray-800/80 border border-gray-700 rounded px-2 py-1 inline-block">
             {toast}
+          </div>
+        )}
+        {externalToast && (
+          <div className="mt-2 text-xs text-red-300 bg-red-900/40 border border-red-700 rounded px-2 py-1 inline-block">
+            {externalToast}
           </div>
         )}
       </header>

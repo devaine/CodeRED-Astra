@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import DeleteButton from "src/components/ui/button/delete-button";
 import DownButton from "src/components/ui/button/down-button";
 import { motion } from "motion/react";
 import { BotMessageSquare } from "lucide-react";
 
-export default function MessageInput({ onSend }) {
+export default function MessageInput({ onSend, disabled = false }) {
   const [text, setText] = useState("");
   const textareaRef = useRef(null);
 
@@ -15,7 +14,7 @@ export default function MessageInput({ onSend }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (!text.trim() || disabled) return;
     onSend(text.trim());
     setText("");
   }
@@ -38,6 +37,7 @@ export default function MessageInput({ onSend }) {
                 ref={textareaRef}
                 value={text}
                 onChange={(e) => {
+                  if (disabled) return;
                   setText(e.target.value);
                   // auto-resize
                   const ta = textareaRef.current;
@@ -49,12 +49,17 @@ export default function MessageInput({ onSend }) {
                 placeholder="Type a message..."
                 rows={1}
                 className="flex-1 mx-2 rounded-md shadow-2sx border-none focus:border-none focus:outline-none resize-none overflow-auto max-h-40"
+                disabled={disabled}
               />
               <motion.button
                 type="submit"
-                className="flex gap-2 px-4 py-2 bg-gray-700 rounded-xl ml-4 items-center"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                className={`flex gap-2 px-4 py-2 bg-gray-700 rounded-xl ml-4 items-center ${
+                  disabled ? "cursor-not-allowed" : ""
+                }`}
+                whileHover={disabled ? undefined : { scale: 1.1 }}
+                whileTap={disabled ? undefined : { scale: 0.9 }}
+                disabled={disabled}
+                style={{ opacity: disabled ? 0.5 : 1 }}
               >
                 <BotMessageSquare />
               </motion.button>
