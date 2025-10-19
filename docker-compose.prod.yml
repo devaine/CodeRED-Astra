@@ -3,7 +3,7 @@ services:
     image: ghcr.io/${REPO_NAME_LOWER}/web-app:${IMAGE_TAG}
     restart: always
     ports:
-      - "45.43.2.25:80:3000"
+      - "127.0.0.1:3033:3000"
     environment:
       - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
       - RUST_ENGINE_URL=http://rust-engine:8000
