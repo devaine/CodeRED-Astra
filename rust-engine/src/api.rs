@@ -142,16 +142,55 @@ async fn handle_import_demo(params: std::collections::HashMap<String, String>, p
     use std::fs;
     use std::path::PathBuf;
     let force = params.get("force").map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false);
-    let demo_dir = std::env::var("DEMO_DATA_DIR").unwrap_or_else(|_| "demo-data".to_string());
+    let demo_dir_setting = std::env::var("DEMO_DATA_DIR").unwrap_or_else(|_| "demo-data".to_string());
     let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let src_dir = base.join(demo_dir);
-    if !src_dir.exists() {
-        return Ok(warp::reply::json(&serde_json::json!({
-            "imported": 0,
-            "skipped": 0,
-            "error": format!("demo dir not found: {}", src_dir.display())
-        })));
+
+    // Build a list of plausible demo-data locations so local runs and containers both work.
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    let configured = PathBuf::from(&demo_dir_setting);
+    let mut push_candidate = |path: PathBuf| {
+        if !candidates.iter().any(|existing| existing == &path) {
+            candidates.push(path);
+        }
+    };
+
+    push_candidate(base.join(&configured));
+    push_candidate(PathBuf::from(&demo_dir_setting));
+    push_candidate(base.join("rust-engine").join(&configured));
+    push_candidate(base.join("rust-engine").join("demo-data"));
+    push_candidate(base.join("demo-data"));
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            push_candidate(exe_dir.join(&configured));
+            push_candidate(exe_dir.join("demo-data"));
+            push_candidate(exe_dir.join("rust-engine").join(&configured));
+        }
     }
+
+    let mut attempted: Vec<PathBuf> = Vec::new();
+    let mut resolved_dir: Option<PathBuf> = None;
+    for candidate in candidates {
+        if candidate.exists() && candidate.is_dir() {
+            resolved_dir = Some(candidate);
+            break;
+        }
+        attempted.push(candidate);
+    }
+
+    let src_dir = match resolved_dir {
+        Some(path) => path,
+        None => {
+            let attempted_paths: Vec<String> = attempted
+                .into_iter()
+                .map(|p| p.display().to_string())
+                .collect();
+            return Ok(warp::reply::json(&serde_json::json!({
+                "imported": 0,
+                "skipped": 0,
+                "error": format!("demo dir not found (checked: {})", attempted_paths.join(", "))
+            })));
+        }
+    };
     let mut imported = 0;
     let mut skipped = 0;
     for entry in fs::read_dir(&src_dir).map_err(|_| warp::reject())? {
