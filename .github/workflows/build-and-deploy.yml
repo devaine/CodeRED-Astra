@@ -72,8 +72,8 @@ jobs:
       - name: Deploy to server via SSH ☁️
         uses: appleboy/ssh-action@v1.0.3
         env:
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          RUNNER_GH_ACTOR: ${{ github.actor }}
+          RUNNER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
@@ -83,9 +83,9 @@ jobs:
             cd /home/github-actions/codered-astra
             # wrapper to support both Docker Compose v2 and legacy v1
             compose() { docker compose "$@" || docker-compose "$@"; }
-            # Log in to GHCR to pull private images (requires GHCR_USERNAME and GHCR_TOKEN envs)
-            if [ -n "$GHCR_USERNAME" ] && [ -n "$GHCR_TOKEN" ]; then
-              echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            # Log in to GHCR using the run's GITHUB_TOKEN so compose can pull images.
+            if [ -n "$RUNNER_GITHUB_TOKEN" ] && [ -n "$RUNNER_GH_ACTOR" ]; then
+              echo "$RUNNER_GITHUB_TOKEN" | docker login ghcr.io -u "$RUNNER_GH_ACTOR" --password-stdin || true
             fi
             export REPO_NAME_LOWER='${{ steps.repo_name.outputs.name }}'
             export GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}'
