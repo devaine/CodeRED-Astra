@@ -13,6 +13,7 @@
 - GEMINI_API_KEY: used for Gemini content generation (optional in demo)
 - DEMO_DATA_DIR: path to the folder containing PDF demo data (default resolves to `demo-data` under the repo or `/app/demo-data` in containers)
 - ASTRA_STORAGE: directory for uploaded file blobs (default `/app/storage`)
+- AUTO_IMPORT_DEMO: set to `false`, `0`, `off`, or `no` to disable automatic demo import at startup (defaults to `true`)
 
 ## Endpoints (JSON)
 
@@ -74,7 +75,7 @@
 2. set env DATABASE_URL and QDRANT_URL
 3. cargo run
 4. (optional) import demo PDFs
-   - Populate a folder with PDFs under `rust-engine/demo-data` (or point `DEMO_DATA_DIR` to a custom path). The server auto-resolves common locations such as the repo root, `/app/demo-data`, and the working directory when running in Docker.
+  - Populate a folder with PDFs under `rust-engine/demo-data` (or point `DEMO_DATA_DIR` to a custom path). The server auto-resolves common locations such as the repo root, `/app/demo-data`, and the working directory when running in Docker. When the engine boots it automatically attempts this import (can be disabled by setting `AUTO_IMPORT_DEMO=false`).
    - Call the endpoint:
      - POST <http://localhost:8000/api/files/import-demo>
   - Optional query `?force=1` to overwrite existing by filename. The JSON response also echoes where the engine looked (`source_dir`, `attempted_paths`) and how many PDFs were detected (`files_found`) so misconfigurations are easy to spot. Imported files are written to the shared `/app/storage` volume; the web-app container mounts this volume read-only and serves the contents at `/storage/<filename>`.

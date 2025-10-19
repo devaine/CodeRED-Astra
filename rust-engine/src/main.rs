@@ -10,7 +10,7 @@ mod worker;
 
 use std::env;
 use std::error::Error;
-use tracing::info;
+use tracing::{error, info, warn};
 use warp::Filter;
 
 #[tokio::main]
@@ -33,6 +33,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = db::init_db(&database_url)
         .await
         .map_err(|e| -> Box<dyn Error> { Box::new(e) })?;
+
+    let auto_import_setting = env::var("AUTO_IMPORT_DEMO").unwrap_or_else(|_| "true".to_string());
+    let auto_import = !matches!(
+        auto_import_setting.trim().to_ascii_lowercase().as_str(),
+        "0" | "false" | "off" | "no"
+    );
+    if auto_import {
+        match api::perform_demo_import(false, &pool).await {
+            Ok(summary) => {
+                if let Some(err_msg) = summary.error.as_ref() {
+                    warn!(error = %err_msg, "startup demo import completed with warnings");
+                }
+                info!(
+                    imported = summary.imported,
+                    skipped = summary.skipped,
+                    files_found = summary.files_found,
+                    source = summary.source_dir.as_deref().unwrap_or("unknown"),
+                    "startup demo import completed"
+                );
+            }
+            Err(err) => {
+                error!(error = %err, "startup demo import failed");
+            }
+        }
+    } else {
+        info!("AUTO_IMPORT_DEMO disabled; skipping startup demo import");
+    }
 
     // Spawn query worker
     let worker = worker::Worker::new(pool.clone());
