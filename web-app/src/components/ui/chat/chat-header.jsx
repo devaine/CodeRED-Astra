@@ -20,10 +20,9 @@ export default function ChatHeader({
       setIngesting(true);
       const res = await fetch("/api/files/import-demo", { method: "POST" });
       const json = await res.json().catch(() => ({}));
-      const imported = json.imported ?? "?";
-      const skipped = json.skipped ?? "?";
-      const summary = `Imported: ${imported}, Skipped: ${skipped}`;
-      setToast(json.error ? `${summary} - ${json.error}` : summary);
+      setToast(
+        `Imported: ${json.imported ?? "?"}, Skipped: ${json.skipped ?? "?"}`
+      );
       setTimeout(() => setToast(""), 4000);
     } catch (e) {
       setToast("Import failed");

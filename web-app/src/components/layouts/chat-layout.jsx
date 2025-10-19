@@ -3,14 +3,14 @@ import ChatHeader from "src/components/ui/chat/chat-header";
 import ChatWindow from "src/components/ui/chat/chat-window";
 import MessageInput from "src/components/ui/chat/message-input";
 import { GoogleGenAI } from "@google/genai";
-import { useChatBackend } from "src/context/chat-backend-context";
+
+let userInput = [];
 
 const ai = new GoogleGenAI({ apiKey: import.meta.env.GEMINI_API_KEY });
 
 async function AIResponse(userInputArray) {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-
     contents: userInputArray,
   });
 
@@ -31,11 +31,7 @@ export default function ChatLayout() {
     <div className="flex flex-col flex-start w-full max-w-3xl gap-4 p-4">
       <ChatHeader onDeleteAll={handleDeleteAll} />
       <ChatWindow messages={messages} />
-      <MessageInput
-        onSend={handleSend}
-        onMessage={addMessage}
-        onDeleteAll={handleDeleteAll}
-      />
+      <MessageInput onSend={handleSend} onDeleteAll={handleDeleteAll} />
     </div>
   );
 }
