@@ -14,18 +14,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+
 # Allow override of toolchain (stable, nightly, or a pinned version)
 ARG RUSTUP_TOOLCHAIN=stable
 
-# Explicit HOME to avoid undefined variable during Docker build
-ENV HOME=/root
+# Use rustup and cargo from the official Rust image location
+ENV PATH="/usr/local/cargo/bin:${PATH}"
 
-# Install rustup and ensure the selected toolchain is installed (fixes edition mismatches in CI)
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && /root/.cargo/bin/rustup toolchain install ${RUSTUP_TOOLCHAIN} \
-    && /root/.cargo/bin/rustup default ${RUSTUP_TOOLCHAIN}
-
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Ensure the selected toolchain is installed and set as default (fixes edition mismatches in CI)
+RUN /usr/local/cargo/bin/rustup toolchain install ${RUSTUP_TOOLCHAIN} \
+    && /usr/local/cargo/bin/rustup default ${RUSTUP_TOOLCHAIN}
 
 # Copy manifest files first to leverage Docker layer caching for dependencies
 COPY Cargo.toml Cargo.lock ./
