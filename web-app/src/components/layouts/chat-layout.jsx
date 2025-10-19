@@ -11,6 +11,11 @@ export default function ChatLayout() {
     },
   ]);
 
+  function addMessage(role, content) {
+    const msg = { role, content };
+    setMessages((s) => [...s, msg]);
+  }
+
   function handleSend(text) {
     const userMsg = { role: "user", content: text };
     setMessages((s) => [...s, userMsg]);
@@ -33,7 +38,11 @@ export default function ChatLayout() {
     <div className="flex flex-col flex-start w-full max-w-3xl gap-4 p-4">
       <ChatHeader onDeleteAll={handleDeleteAll} />
       <ChatWindow messages={messages} />
-      <MessageInput onSend={handleSend} />
+      <MessageInput
+        onSend={handleSend}
+        onMessage={addMessage}
+        onDeleteAll={handleDeleteAll}
+      />
     </div>
   );
 }
