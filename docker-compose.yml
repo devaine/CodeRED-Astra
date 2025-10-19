@@ -23,8 +23,16 @@ services:
     restart: always
     environment:
       - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+      - ASTRA_STORAGE=/app/storage
+      - DEMO_DATA_DIR=/app/demo-data
+      - QDRANT_URL=http://qdrant:6333
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - rust-storage:/app/storage
+      - ./rust-engine/demo-data:/app/demo-data:ro
     depends_on:
-      - mysql # <-- Updated dependency
+      - mysql
+      - qdrant
 
   # --- Key Changes are in this section ---
   mysql: # <-- Renamed service for clarity
@@ -63,3 +71,4 @@ services:
 volumes:
   mysql-data: # Renamed volume for clarity (optional but good practice)
   qdrant-data:
+  rust-storage:

@@ -72,10 +72,18 @@ RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin appu
 # Copy the compiled binary from the builder stage
 
 COPY --from=builder /usr/src/app/target/release/rust-engine /usr/local/bin/rust-engine
+
+# Create writable storage and logs directories for appuser
 RUN chown appuser:appuser /usr/local/bin/rust-engine \
-    && mkdir -p /var/log \
+    && mkdir -p /var/log /app/storage /app/demo-data \
     && touch /var/log/astra-errors.log \
-    && chown appuser:appuser /var/log/astra-errors.log
+    && chown -R appuser:appuser /var/log /app
+
+# Set working directory to a writable location
+WORKDIR /app
+
+# Switch to non-root user
+USER appuser
 
 EXPOSE 8000
 # Redirect all output to /var/log/astra-errors.log for easy monitoring

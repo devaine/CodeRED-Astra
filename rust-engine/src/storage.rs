@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 pub fn storage_dir() -> PathBuf {
     std::env::var("ASTRA_STORAGE")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| std::env::current_dir().unwrap().join("storage"))
+        .unwrap_or_else(|_| PathBuf::from("/app/storage"))
 }
 
 pub fn ensure_storage_dir() -> Result<()> {
