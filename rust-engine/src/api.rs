@@ -153,11 +153,7 @@ pub async fn perform_demo_import(force: bool, pool: &MySqlPool) -> Result<DemoIm
                 .await?;
             info!(%filename, file_id = %id, "demo file inserted into database");
 
-            sqlx::query("INSERT INTO file_jobs (file_id, status) VALUES (?, 'Queued')")
-                .bind(&id)
-                .execute(pool)
-                .await?;
-            info!(%filename, file_id = %id, "demo file queued for analysis");
+            info!(%filename, file_id = %id, "demo file queued for analysis by worker");
 
             summary.imported += 1;
         } else {
