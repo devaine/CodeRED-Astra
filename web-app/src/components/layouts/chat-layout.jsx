@@ -25,7 +25,7 @@ export default function ChatLayout() {
   }
 
   return (
-    <div className="flex flex-col justify-between h-full w-full max-w-4xl gap-4 p-4">
+    <div className="w-full max-w-4xl gap-4 p-4">
       <ChatHeader />
       <ChatWindow messages={messages} />
       <MessageInput onSend={handleSend} />
