@@ -22,6 +22,6 @@ export default defineConfig({
 		'import.meta.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
 	},
   preview: {
-    allowHost: "astrachat.christbru.services"
+    allowedHosts: ["astrachat.christbru.services"]
   }
 });
