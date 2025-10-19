@@ -123,6 +123,7 @@ async fn start_server_without_db() -> Result<(), Box<dyn std::error::Error>> {
         .with(warp::log("rust_engine"));
 
     info!("Rust Engine started on http://0.0.0.0:8000 (DB-less mode)");
+    info!("Rust Engine prepared!");
 
     warp::serve(routes)
         .run(([0, 0, 0, 0], 8000))

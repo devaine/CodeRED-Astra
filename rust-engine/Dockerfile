@@ -58,7 +58,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 RUN rm -f src/main.rs
 COPY src ./src
 # Build the real binary
-RUN cargo build --release --locked --no-cache
+RUN cargo build --release --locked
 
 # --- Stage 2: Final, small image ---
 
