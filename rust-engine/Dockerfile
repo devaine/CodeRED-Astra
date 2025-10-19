@@ -22,16 +22,24 @@ ARG RUSTUP_TOOLCHAIN=
 # Use rustup and cargo from the official Rust image location
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
-# Optionally install and set the selected toolchain. If not provided, keep the image's default toolchain.
-RUN if [ -n "${RUSTUP_TOOLCHAIN}" ]; then \
-            /usr/local/cargo/bin/rustup toolchain install "${RUSTUP_TOOLCHAIN}" && \
-            /usr/local/cargo/bin/rustup default "${RUSTUP_TOOLCHAIN}"; \
-        else \
-            /usr/local/cargo/bin/rustup show active-toolchain || true; \
-        fi
-
 # Copy manifest files first to leverage Docker layer caching for dependencies
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+
+# Ensure the pinned toolchain from rust-toolchain.toml (or provided ARG) is installed in a cacheable layer
+RUN set -eux; \
+        if [ -n "${RUSTUP_TOOLCHAIN}" ]; then \
+            rustup toolchain install "${RUSTUP_TOOLCHAIN}" && \
+            rustup default "${RUSTUP_TOOLCHAIN}"; \
+        else \
+            if [ -f rust-toolchain.toml ]; then \
+                TOOLCHAIN=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml | head -n1); \
+                if [ -n "$TOOLCHAIN" ]; then \
+                    rustup toolchain install "$TOOLCHAIN" && \
+                    rustup default "$TOOLCHAIN"; \
+                fi; \
+            fi; \
+        fi; \
+        rustup show active-toolchain || true
 
 # Create a dummy src to allow cargo to download dependencies into the cache layer
 RUN mkdir -p src && echo "fn main() { println!(\"cargo cache build\"); }" > src/main.rs
@@ -39,7 +47,6 @@ RUN mkdir -p src && echo "fn main() { println!(\"cargo cache build\"); }" > src/
 # Fetch and build dependencies (this will be cached until Cargo.toml changes)
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,target=/usr/src/app/target,sharing=locked \
     cargo build --release || true
 
 
