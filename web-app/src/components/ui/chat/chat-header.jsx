@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Rocket } from "lucide-react";
 import DeleteButton from "src/components/ui/button/delete-button";
-import FileList from "src/components/ui/file/file-list";
+import SchematicButton from "src/components/ui/button/schematic-button";
 
 export default function ChatHeader({
   title = "Title of Chat",
