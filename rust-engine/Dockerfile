@@ -48,16 +48,17 @@ RUN set -eux; \
 # Create a dummy src to allow cargo to download dependencies into the cache layer
 RUN mkdir -p src && echo "fn main() { println!(\"cargo cache build\"); }" > src/main.rs
 
-# Fetch and build dependencies (this will be cached until Cargo.toml changes)
+# Warm up dependency caches without compiling a dummy binary
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    cargo build --release || true
+    cargo fetch
 
 
 # Remove dummy main.rs before copying the real source
 RUN rm -f src/main.rs
 COPY src ./src
-RUN cargo build --release --locked
+# Build the real binary
+RUN cargo build --release --locked --no-cache
 
 # --- Stage 2: Final, small image ---
 

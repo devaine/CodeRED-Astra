@@ -98,6 +98,8 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             # Stop and remove old containers before pulling new images
             compose -f docker-compose.prod.yml down
+            # Clear previous logs for a clean deployment log
+            : > ~/astra-logs/astra-errors.log || true
             compose -f docker-compose.prod.yml pull
             compose -f docker-compose.prod.yml up -d
             # Security hygiene: remove GHCR credentials after pulling
