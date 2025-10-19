@@ -3,68 +3,7 @@ services:
     image: ghcr.io/${REPO_NAME_LOWER}/web-app:${IMAGE_TAG}
     restart: always
     ports:
-      - "127.0.0.1:3033:3000"
+      - "127.0.0.1:3034:3000"
     environment:
-      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
-      - RUST_ENGINE_URL=http://rust-engine:8000
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
-      - mysql
-      - rust-engine
-
-  rust-engine:
-    image: ghcr.io/${REPO_NAME_LOWER}/rust-engine:${IMAGE_TAG}
-    restart: always
-    environment:
-      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
-      - ASTRA_STORAGE=/app/storage
-      - DEMO_DATA_DIR=/app/demo-data
-      - QDRANT_URL=http://qdrant:6333
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    depends_on:
-      - mysql
-      - qdrant
-    user: "1004"
-    volumes:
-      - ~/astra-logs:/var/log
-      - rust-storage:/app/storage
-      - /var/www/codered-astra/rust-engine/demo-data:/app/demo-data:ro
-
-  mysql:
-    image: mysql:8.0
-    restart: always
-    ports:
-      - "45.43.2.25:3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-    volumes:
-      - mysql-data:/var/lib/mysql
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    restart: always
-    ports:
-      - "127.0.0.1:8080:80"
-    environment:
-      - PMA_HOST=mysql
-    depends_on:
-      - mysql
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6333:6333"
-    volumes:
-      - qdrant-data:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    # expose to rust-engine via service name 'qdrant'
-
-volumes:
-  mysql-data:
-  qdrant-data:
-  rust-storage:
