@@ -1,15 +1,9 @@
 FROM node:23-alpine
 
-COPY . /codered-astra
-
-WORKDIR /codered-astra
-
-RUN npm i 
-
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run format && npm run build
 EXPOSE 3000
-
-RUN npm run format
-
-RUN npm run build
-
-CMD ["npm", "run", "host"]
+CMD ["npm", "run", "preview"]

@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "dev": "vite",
-    "host": "vite host",
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "host": "vite --host 0.0.0.0 --port 3000",
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "clean-dist": "find apps/ -type d -name 'dist' -print0 | xargs -r0 -- rm -r",
     "clean-all": "find apps/ -type d -name 'dist' -print0 | xargs -r0 -- rm -r && find . -path ./node_modules -prune -o -name 'node_modules' | xargs rm -rf "
