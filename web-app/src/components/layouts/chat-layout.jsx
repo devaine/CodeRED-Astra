@@ -31,9 +31,9 @@ export default function ChatLayout() {
 
   return (
     <div className="flex flex-col flex-start w-full max-w-3xl gap-4 p-4">
-      <ChatHeader />
+      <ChatHeader onDeleteAll={handleDeleteAll} />
       <ChatWindow messages={messages} />
-      <MessageInput onSend={handleSend} onDeleteAll={handleDeleteAll} />
+      <MessageInput onSend={handleSend} />
     </div>
   );
 }
