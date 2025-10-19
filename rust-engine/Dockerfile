@@ -3,7 +3,7 @@
 
 # --- Stage 1: Builder ---
 # Use a stable Rust version
-FROM rust:1.88-slim AS builder
+FROM rust:slim AS builder
 WORKDIR /usr/src/app
 
 # Install build dependencies needed for sqlx
