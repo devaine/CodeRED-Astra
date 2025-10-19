@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import DownButton from "src/components/ui/button/down-button";
+import BackendToggle from "src/components/ui/button/backend-toggle";
+import ChatBackendContext from "src/context/chat-backend-context";
 import { motion } from "motion/react";
 import { BotMessageSquare } from "lucide-react";
 
@@ -59,7 +61,6 @@ export default function MessageInput({ onSend, onMessage }) {
       console.error(err);
       if (onMessage) onMessage("assistant", `Error: ${err.message}`);
     }
-
     setText("");
   }
 
@@ -67,9 +68,13 @@ export default function MessageInput({ onSend, onMessage }) {
     <div className="w-full flex justify-center">
       <footer className="fixed bottom-6 max-w-3xl w-full px-4">
         <div className="flex flex-col gap-4">
-          <div>
-            <DownButton></DownButton>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <DownButton />
+              <BackendToggle />
+            </div>
           </div>
+
           <form
             onSubmit={handleSubmit}
             className="bg-gray-900 rounded-2xl border-2 border-gray-800 shadow-lg shadow-indigo-600"
