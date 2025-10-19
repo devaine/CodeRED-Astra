@@ -1,15 +1,21 @@
 import React, { useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import { MARKDOWN_COMPONENTS } from "src/config/markdown";
 
 function MessageBubble({ message }) {
   const isUser = message.role === "user";
   return (
-    <div
-      className={`flex ${isUser ? "justify-end" : "justify-start"} px-4 py-8`}
-    >
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} py-2`}>
       <div
-        className={`max-w-[70%] p-3 rounded-lg ${isUser ? "bg-indigo-600 text-white" : "bg-gray-700 text-slate-100"}`}
+        className={`p-3 rounded-xl  ${isUser ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-gray-700 text-slate-100 rounded-tl-sm"}`}
       >
-        <div className="text-sm">{message.content}</div>
+        {isUser ? (
+          <div className="text-sm">{message.content}</div>
+        ) : (
+          <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+            {message.content}
+          </ReactMarkdown>
+        )}
       </div>
     </div>
   );
@@ -17,7 +23,7 @@ function MessageBubble({ message }) {
 
 export default function ChatWindow({ messages }) {
   return (
-    <div className="flex-1 overflow-auto p-2">
+    <div className="flex-1 overflow-auto px-2 pt-4 pb-32">
       <div className="">
         {messages.map((m, i) => (
           <MessageBubble key={i} message={m} />
