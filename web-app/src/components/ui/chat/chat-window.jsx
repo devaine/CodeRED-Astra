@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import { MARKDOWN_COMPONENTS } from "src/config/markdown";
 
 function MessageBubble({ message }) {
   const isUser = message.role === "user";
@@ -11,7 +12,9 @@ function MessageBubble({ message }) {
         {isUser ? (
           <div className="text-sm">{message.content}</div>
         ) : (
-          <ReactMarkdown>{message.content}</ReactMarkdown>
+          <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+            {message.content}
+          </ReactMarkdown>
         )}
       </div>
     </div>
