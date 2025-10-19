@@ -15,8 +15,6 @@ services:
   rust-engine:
     image: ghcr.io/${REPO_NAME_LOWER}/rust-engine:${IMAGE_TAG}
     restart: always
-    ports:
-      - "0.0.0.0:3306:3306"
     environment:
       - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
     depends_on:
@@ -28,6 +26,8 @@ services:
   mysql:
     image: mysql:8.0
     restart: always
+    ports:
+      - "0.0.0.0:3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
