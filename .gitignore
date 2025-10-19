@@ -23,7 +23,6 @@ turbo-host.log
 
 # rust
 rust-engine/target
-rust-engine/Cargo.lock
 
 # debug
 npm-debug.log*
