@@ -127,30 +127,11 @@ impl Worker {
             return Ok(());
         }
 
-        // Stage 4: fetch file metadata for IDs
-        let mut files_json = Vec::new();
-        for (fid, score) in hits {
-            if let Some(row) = sqlx::query("SELECT id, filename, path, description, analysis_status FROM files WHERE id = ? AND pending_analysis = FALSE")
-                .bind(&fid)
-                .fetch_optional(&self.pool)
-                .await? {
-                use sqlx::Row;
-                let id: String = row.get("id");
-                let filename: String = row.get("filename");
-                let path: String = row.get("path");
-                let description: Option<String> = row.get("description");
-                let status: Option<String> = row.try_get("analysis_status").ok();
-                let storage_url = storage::public_url_for(&filename);
-                files_json.push(serde_json::json!({
-                    "id": id,
-                    "filename": filename,
-                    "path": path,
-                    "storage_url": storage_url,
-                    "description": description,
-                    "analysis_status": status,
-                    "score": score
-                }));
-            }
+        // Stage 4: fetch file metadata for IDs and fall back to recent ready files when empty
+        let mut files_json = self.load_files_by_hits(&hits).await?;
+
+        if files_json.is_empty() {
+            files_json = self.load_recent_ready_files(top_k).await?;
         }
 
         // Stage 5: call Gemini to analyze relationships and propose follow-up details strictly from provided files
@@ -186,6 +167,68 @@ impl Worker {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    async fn load_files_by_hits(&self, hits: &[(String, f32)]) -> Result<Vec<serde_json::Value>> {
+        let mut files_json = Vec::new();
+        for (fid, score) in hits {
+            if let Some(row) = sqlx::query(
+                "SELECT id, filename, path, description, analysis_status FROM files WHERE id = ? AND pending_analysis = FALSE",
+            )
+            .bind(fid)
+            .fetch_optional(&self.pool)
+            .await?
+            {
+                use sqlx::Row;
+                let id: String = row.get("id");
+                let filename: String = row.get("filename");
+                let path: String = row.get("path");
+                let description: Option<String> = row.get("description");
+                let analysis_status: Option<String> = row.try_get("analysis_status").ok();
+                let storage_url = storage::public_url_for(&filename);
+                files_json.push(serde_json::json!({
+                    "id": id,
+                    "filename": filename,
+                    "path": path,
+                    "storage_url": storage_url,
+                    "description": description,
+                    "analysis_status": analysis_status,
+                    "score": score
+                }));
+            }
+        }
+        Ok(files_json)
+    }
+
+    async fn load_recent_ready_files(&self, top_k: usize) -> Result<Vec<serde_json::Value>> {
+        let limit = top_k.max(1) as i64;
+        let rows = sqlx::query(
+            "SELECT id, filename, path, description, analysis_status FROM files WHERE pending_analysis = FALSE ORDER BY created_at DESC LIMIT ?",
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut files_json = Vec::new();
+        for row in rows {
+            use sqlx::Row;
+            let id: String = row.get("id");
+            let filename: String = row.get("filename");
+            let path: String = row.get("path");
+            let description: Option<String> = row.get("description");
+            let analysis_status: Option<String> = row.try_get("analysis_status").ok();
+            let storage_url = storage::public_url_for(&filename);
+            files_json.push(serde_json::json!({
+                "id": id,
+                "filename": filename,
+                "path": path,
+                "storage_url": storage_url,
+                "description": description,
+                "analysis_status": analysis_status,
+                "score": serde_json::Value::Null
+            }));
+        }
+        Ok(files_json)
     }
 
     async fn update_status(&self, id: &str, status: QueryStatus) -> Result<()> {
