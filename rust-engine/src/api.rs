@@ -16,6 +16,17 @@ struct DeleteQuery {
 pub fn routes(pool: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let pool_filter = warp::any().map(move || pool.clone());
 
+    // Import demo files from demo-data directory
+    let import_demo = warp::path!("files" / "import-demo")
+        .and(warp::post())
+        .and(
+            warp::query::<std::collections::HashMap<String, String>>()
+                .or(warp::any().map(|| std::collections::HashMap::new()))
+                .unify()
+        )
+        .and(pool_filter.clone())
+        .and_then(handle_import_demo);
+
     // Upload file
     let upload = warp::path("files")
         .and(warp::post())
@@ -64,7 +75,7 @@ pub fn routes(pool: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
         .and(pool_filter.clone())
         .and_then(handle_cancel_query);
 
-    let api = upload.or(delete).or(list).or(create_q).or(status).or(result).or(cancel);
+    let api = upload.or(import_demo).or(delete).or(list).or(create_q).or(status).or(result).or(cancel);
     warp::path("api").and(api)
 }
 
@@ -123,6 +134,70 @@ async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply
     Ok(warp::reply::json(&serde_json::json!({"success": true})))
 }
 
+async fn handle_import_demo(params: std::collections::HashMap<String, String>, pool: MySqlPool) -> Result<impl Reply, Rejection> {
+    use std::fs;
+    use std::path::PathBuf;
+    let force = params.get("force").map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false);
+    let demo_dir = std::env::var("DEMO_DATA_DIR").unwrap_or_else(|_| "demo-data".to_string());
+    let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let src_dir = base.join(demo_dir);
+    if !src_dir.exists() {
+        return Ok(warp::reply::json(&serde_json::json!({
+            "imported": 0,
+            "skipped": 0,
+            "error": format!("demo dir not found: {}", src_dir.display())
+        })));
+    }
+    let mut imported = 0;
+    let mut skipped = 0;
+    for entry in fs::read_dir(&src_dir).map_err(|_| warp::reject())? {
+        let entry = entry.map_err(|_| warp::reject())?;
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("pdf")).unwrap_or(false) {
+            let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown.pdf").to_string();
+
+            // check if exists
+            if !force {
+                if let Some(_) = sqlx::query("SELECT id FROM files WHERE filename = ?")
+                    .bind(&filename)
+                    .fetch_optional(&pool)
+                    .await
+                    .map_err(|_| warp::reject())? {
+                    skipped += 1;
+                    continue;
+                }
+            }
+
+            // read and save to storage
+            let data = fs::read(&path).map_err(|_| warp::reject())?;
+            let stored_path = storage::save_file(&filename, &data).map_err(|_| warp::reject())?;
+
+            // insert or upsert db record
+            let id = uuid::Uuid::new_v4().to_string();
+            if force {
+                let _ = sqlx::query("DELETE FROM files WHERE filename = ?")
+                    .bind(&filename)
+                    .execute(&pool)
+                    .await;
+            }
+            sqlx::query("INSERT INTO files (id, filename, path, description, pending_analysis, analysis_status) VALUES (?, ?, ?, ?, ?, 'Queued')")
+                .bind(&id)
+                .bind(&filename)
+                .bind(stored_path.to_str().unwrap())
+                .bind(Option::<String>::None)
+                .bind(true)
+                .execute(&pool)
+                .await
+                .map_err(|e| {
+                    tracing::error!("DB insert error: {}", e);
+                    warp::reject()
+                })?;
+            imported += 1;
+        }
+    }
+    Ok(warp::reply::json(&serde_json::json!({ "imported": imported, "skipped": skipped })))
+}
+
 async fn handle_delete(q: DeleteQuery, pool: MySqlPool) -> Result<impl Reply, Rejection> {
     if let Some(row) = sqlx::query("SELECT path FROM files WHERE id = ?")
         .bind(&q.id)
@@ -143,7 +218,7 @@ async fn handle_delete(q: DeleteQuery, pool: MySqlPool) -> Result<impl Reply, Re
 }
 
 async fn handle_list(pool: MySqlPool) -> Result<impl Reply, Rejection> {
-    let rows = sqlx::query("SELECT id, filename, path, description FROM files ORDER BY created_at DESC LIMIT 500")
+    let rows = sqlx::query("SELECT id, filename, path, description, pending_analysis, analysis_status FROM files ORDER BY created_at DESC LIMIT 500")
         .fetch_all(&pool)
         .await
         .map_err(|e| {
@@ -158,7 +233,16 @@ async fn handle_list(pool: MySqlPool) -> Result<impl Reply, Rejection> {
             let filename: String = r.get("filename");
             let path: String = r.get("path");
             let description: Option<String> = r.get("description");
-            serde_json::json!({"id": id, "filename": filename, "path": path, "description": description})
+            let pending: bool = r.get("pending_analysis");
+            let status: Option<String> = r.try_get("analysis_status").ok();
+            serde_json::json!({
+                "id": id,
+                "filename": filename,
+                "path": path,
+                "description": description,
+                "pending_analysis": pending,
+                "analysis_status": status
+            })
         })
         .collect();
 
