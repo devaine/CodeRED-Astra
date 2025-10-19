@@ -1,6 +1,6 @@
 services:
   web-app:
-    image: ghcr.io/${REPO_NAME_LOWER}/web-app:${IMAGE_TAG}
+    image: ghcr.io/${REPO_NAME_LOWER}/fallback-web-app:${IMAGE_TAG}
     restart: always
     ports:
       - "127.0.0.1:3033:3000"

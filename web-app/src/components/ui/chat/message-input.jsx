@@ -3,7 +3,11 @@ import DownButton from "src/components/ui/button/down-button";
 import { motion } from "motion/react";
 import { BotMessageSquare } from "lucide-react";
 
-export default function MessageInput({ onSend, onMessage }) {
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: import.meta.env.GEMINI_API_KEY });
+
+export default function MessageInput({ onSend }) {
   const [text, setText] = useState("");
   const textareaRef = useRef(null);
 
@@ -13,53 +17,10 @@ export default function MessageInput({ onSend, onMessage }) {
   }, []);
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    if (!text.trim()) return;
-
     // send user message locally
+    e.preventDefault();
+    if (text.trim() === "") return;
     onSend(text.trim());
-
-    // create query on backend
-    try {
-      if (onMessage)
-        onMessage("assistant", "Queued: sending request to server...");
-      const createRes = await fetch(`/api/query/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: text, top_k: 5 }),
-      });
-      const createJson = await createRes.json();
-      const id = createJson.id;
-      if (!id) throw new Error("no id returned");
-
-      // poll status
-      let status = "Queued";
-      if (onMessage) onMessage("assistant", `Status: ${status}`);
-      while (status !== "Completed" && status !== "Failed") {
-        await new Promise((r) => setTimeout(r, 1000));
-        const sRes = await fetch(`/api/query/status?id=${id}`);
-        const sJson = await sRes.json();
-        status = sJson.status;
-        if (onMessage) onMessage("assistant", `Status: ${status}`);
-        if (status === "Cancelled") break;
-      }
-
-      if (status === "Completed") {
-        const resultRes = await fetch(`/api/query/result?id=${id}`);
-        const resultJson = await resultRes.json();
-        const final =
-          resultJson?.result?.final_answer ||
-          JSON.stringify(resultJson?.result || {});
-        if (onMessage) onMessage("assistant", final);
-      } else {
-        if (onMessage)
-          onMessage("assistant", `Query status ended as: ${status}`);
-      }
-    } catch (err) {
-      console.error(err);
-      if (onMessage) onMessage("assistant", `Error: ${err.message}`);
-    }
-
     setText("");
   }
 
@@ -67,7 +28,12 @@ export default function MessageInput({ onSend, onMessage }) {
     <div className="w-full flex justify-center">
       <footer className="fixed bottom-6 max-w-3xl w-full px-4">
         <div className="flex flex-col gap-4">
-          <DownButton></DownButton>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <DownButton />
+            </div>
+          </div>
+
           <form
             onSubmit={handleSubmit}
             className="bg-gray-900 rounded-2xl border-2 border-gray-800 shadow-lg shadow-indigo-600"

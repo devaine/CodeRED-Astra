@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Rocket } from "lucide-react";
 import DeleteButton from "src/components/ui/button/delete-button";
 import SchematicButton from "../button/schematic-button";
+import FileList from "../file/file-list";
 
 export default function ChatHeader({ title = "Title of Chat" }) {
   const isDebug = useMemo(() => {
@@ -17,7 +18,9 @@ export default function ChatHeader({ title = "Title of Chat" }) {
       setIngesting(true);
       const res = await fetch("/api/files/import-demo", { method: "POST" });
       const json = await res.json().catch(() => ({}));
-      setToast(`Imported: ${json.imported ?? "?"}, Skipped: ${json.skipped ?? "?"}`);
+      setToast(
+        `Imported: ${json.imported ?? "?"}, Skipped: ${json.skipped ?? "?"}`
+      );
       setTimeout(() => setToast(""), 4000);
     } catch (e) {
       setToast("Import failed");
@@ -32,24 +35,23 @@ export default function ChatHeader({ title = "Title of Chat" }) {
       <header className="text-slate-100 fixed top-4 max-w-3xl w-full px-4">
         <div className="flex justify-between items-center gap-4">
           <SchematicButton />
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold shadow-md shadow-indigo-600 bg-gray-900 px-6 py-2 rounded-4xl border-2 border-gray-800">
-              {title}
-            </h1>
-            <DeleteButton />
-            {isDebug && (
-              <motion.button
-                onClick={triggerDemoIngest}
-                className="bg-gray-800 border-2 border-gray-700 rounded-xl px-3 py-2 flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                disabled={ingesting}
-              >
-                <Rocket size={16} />
-                {ingesting ? "Seeding…" : "Seed Demo Data"}
-              </motion.button>
-            )}
-          </div>
+          <FileList />
+          <h1 className="text-lg font-semibold shadow-md shadow-indigo-600 bg-gray-900 px-6 py-2 rounded-4xl border-2 border-gray-800">
+            {title}
+          </h1>
+          <DeleteButton />
+          {isDebug && (
+            <motion.button
+              onClick={triggerDemoIngest}
+              className="bg-gray-800 border-2 border-gray-700 rounded-xl px-3 py-2 flex items-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              disabled={ingesting}
+            >
+              <Rocket size={16} />
+              {ingesting ? "Seeding…" : "Seed Demo Data"}
+            </motion.button>
+          )}
         </div>
         {toast && (
           <div className="mt-2 text-xs text-slate-300 bg-gray-800/80 border border-gray-700 rounded px-2 py-1 inline-block">
