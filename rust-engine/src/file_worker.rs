@@ -1,4 +1,5 @@
-use crate::gemini_client::{generate_text, demo_text_embedding, DEMO_EMBED_DIM};
+use crate::gemini_client::{demo_text_embedding, generate_text_with_model, DEMO_EMBED_DIM};
+use crate::vector;
 use crate::vector_db::QdrantClient;
 use sqlx::MySqlPool;
 use anyhow::Result;
@@ -27,6 +28,9 @@ impl FileWorker {
                     info!("Processing file {}", fid);
                     if let Err(e) = self.process_file(&fid).await {
                         error!("Error processing file {}: {}", fid, e);
+                        if let Err(mark_err) = self.mark_failed(&fid, &format!("{}", e)).await {
+                            error!("Failed to mark file {} as failed: {}", fid, mark_err);
+                        }
                     }
                 }
                 Ok(None) => {
@@ -66,12 +70,18 @@ impl FileWorker {
             .bind(file_id)
             .fetch_one(&self.pool)
             .await?;
-        let filename: String = row.get("filename");
-        let path: String = row.get("path");
+    let filename: String = row.get("filename");
+    let _path: String = row.get("path");
 
         // Stage 1: Gemini 2.5 Flash for description
-        std::env::set_var("GEMINI_MODEL", "gemini-1.5-flash");
-        let desc = generate_text(&format!("Describe the file '{filename}' and extract all key components, keywords, and details for later vectorization. Be comprehensive and factual.")).await.unwrap_or_else(|e| format!("[desc error: {}]", e));
+        let desc = generate_text_with_model(
+            "gemini-2.5-flash",
+            &format!(
+                "Describe the file '{filename}' and extract all key components, keywords, and details for later vectorization. Be comprehensive and factual."
+            ),
+        )
+        .await
+        .unwrap_or_else(|e| format!("[desc error: {}]", e));
         sqlx::query("UPDATE files SET description = ?, analysis_status = 'InProgress' WHERE id = ?")
             .bind(&desc)
             .bind(file_id)
@@ -79,15 +89,42 @@ impl FileWorker {
             .await?;
 
         // Stage 2: Gemini 2.5 Pro for deep vector graph data
-        std::env::set_var("GEMINI_MODEL", "gemini-1.5-pro");
-        let vector_graph = generate_text(&format!("Given the file '{filename}' and its description: {desc}\nGenerate a set of vector graph data (keywords, use cases, relationships) that can be used for broad and precise search. Only include what is directly supported by the file.")).await.unwrap_or_else(|e| format!("[vector error: {}]", e));
+        let vector_graph = generate_text_with_model(
+            "gemini-2.5-pro",
+            &format!(
+                "Given the file '{filename}' and its description: {desc}\nGenerate a set of vector graph data (keywords, use cases, relationships) that can be used for broad and precise search. Only include what is directly supported by the file."
+            ),
+        )
+        .await
+        .unwrap_or_else(|e| format!("[vector error: {}]", e));
 
         // Stage 3: Embed and upsert to Qdrant
         let emb = demo_text_embedding(&vector_graph).await?;
-        self.qdrant.upsert_point(file_id, emb).await?;
+        match self.qdrant.upsert_point(file_id, emb.clone()).await {
+            Ok(_) => {
+                let _ = vector::store_embedding(file_id, emb.clone());
+            }
+            Err(err) => {
+                error!("Qdrant upsert failed for {}: {}", file_id, err);
+                let _ = vector::store_embedding(file_id, emb);
+            }
+        }
 
         // Mark file as ready
         sqlx::query("UPDATE files SET pending_analysis = FALSE, analysis_status = 'Completed' WHERE id = ?")
+            .bind(file_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn mark_failed(&self, file_id: &str, reason: &str) -> Result<()> {
+        sqlx::query("UPDATE files SET analysis_status = 'Failed', pending_analysis = TRUE WHERE id = ?")
+            .bind(file_id)
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("UPDATE files SET description = COALESCE(description, ?) WHERE id = ?")
+            .bind(format!("[analysis failed: {}]", reason))
             .bind(file_id)
             .execute(&self.pool)
             .await?;

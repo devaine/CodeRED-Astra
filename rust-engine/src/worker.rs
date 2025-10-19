@@ -1,5 +1,6 @@
-use crate::gemini_client::{demo_text_embedding, DEMO_EMBED_DIM, generate_text};
+use crate::gemini_client::{demo_text_embedding, generate_text_with_model, DEMO_EMBED_DIM};
 use crate::models::{QueryRecord, QueryStatus};
+use crate::vector;
 use crate::vector_db::QdrantClient;
 use anyhow::Result;
 use sqlx::MySqlPool;
@@ -84,15 +85,34 @@ impl Worker {
 
         // Stage 2: embed query text
         let text = q.payload.get("q").and_then(|v| v.as_str()).unwrap_or("");
-    let emb = demo_text_embedding(text).await?;
-    let top_k = q.payload.get("top_k").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
+        let emb = demo_text_embedding(text).await?;
+        let top_k = q.payload.get("top_k").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
+        let top_k = top_k.max(1).min(20);
 
         // Check cancellation
         if self.is_cancelled(&q.id).await? { return Ok(()); }
 
         // Stage 3: search top-K in Qdrant
-    let hits = self.qdrant.search_top_k(emb, top_k).await.unwrap_or_default();
-    let top_ids: Vec<String> = hits.iter().map(|(id, _)| id.clone()).collect();
+        let hits = match self.qdrant.search_top_k(emb.clone(), top_k).await {
+            Ok(list) if !list.is_empty() => list,
+            Ok(_) => Vec::new(),
+            Err(err) => {
+                error!("Qdrant search failed for query {}: {}", q.id, err);
+                Vec::new()
+            }
+        };
+
+        let hits = if hits.is_empty() {
+            match vector::query_top_k(&emb, top_k) {
+                Ok(fallback_ids) if !fallback_ids.is_empty() => {
+                    info!("Using in-memory fallback for query {}", q.id);
+                    fallback_ids.into_iter().map(|id| (id, 0.0)).collect()
+                }
+                _ => Vec::new(),
+            }
+        } else {
+            hits
+        };
 
         // Check cancellation
         if self.is_cancelled(&q.id).await? { return Ok(()); }
@@ -117,11 +137,23 @@ impl Worker {
 
         // Stage 5: call Gemini to analyze relationships and propose follow-up details strictly from provided files
         let relationships_prompt = build_relationships_prompt(text, &files_json);
-        let relationships = generate_text(&relationships_prompt).await.unwrap_or_else(|e| format!("[demo] relationships error: {}", e));
+        let (relationships, final_answer) = if files_json.is_empty() {
+            (
+                "No analyzed files are ready yet. Try seeding demo data or wait for processing to finish.".to_string(),
+                "I could not find any relevant documents yet. Once files finish analysis I will be able to answer.".to_string(),
+            )
+        } else {
+            let relationships = generate_text_with_model("gemini-2.5-pro", &relationships_prompt)
+                .await
+                .unwrap_or_else(|e| format!("[demo] relationships error: {}", e));
 
-        // Stage 6: final answer synthesis with strict constraints (no speculation; say unknown when insufficient)
-        let final_prompt = build_final_answer_prompt(text, &files_json, &relationships);
-        let final_answer = generate_text(&final_prompt).await.unwrap_or_else(|e| format!("[demo] final answer error: {}", e));
+            // Stage 6: final answer synthesis with strict constraints (no speculation; say unknown when insufficient)
+            let final_prompt = build_final_answer_prompt(text, &files_json, &relationships);
+            let final_answer = generate_text_with_model("gemini-2.5-pro", &final_prompt)
+                .await
+                .unwrap_or_else(|e| format!("[demo] final answer error: {}", e));
+            (relationships, final_answer)
+        };
 
         // Stage 7: persist results
         let result = serde_json::json!({
