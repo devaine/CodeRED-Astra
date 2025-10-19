@@ -32,3 +32,7 @@ pub fn delete_file(path: &Path) -> Result<()> {
     }
     Ok(())
 }
+
+pub fn public_url_for(filename: &str) -> String {
+    format!("/storage/{}", filename)
+}

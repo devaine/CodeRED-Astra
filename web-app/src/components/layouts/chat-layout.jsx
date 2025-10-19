@@ -67,7 +67,10 @@ export default function ChatLayout() {
       .filter((f) => f && typeof f === "object")
       .map((file) => {
         const filename = file.filename || file.id || "download";
-        const linkTarget = `/storage/${encodeURIComponent(filename)}`;
+        const storageUrl = file.storage_url || `/storage/${filename}`;
+        const linkTarget = storageUrl.startsWith("/storage/")
+          ? `/storage/${encodeURIComponent(storageUrl.replace("/storage/", ""))}`
+          : storageUrl;
         const description = file.description?.trim();
         const score =
           typeof file.score === "number"
