@@ -1,0 +1,101 @@
+# .github/workflows/build-and-deploy-fallback.yml
+
+name: Build and Deploy Fallback
+
+on:
+  push:
+    branches: ["gemini"]
+
+jobs:
+  build-and-deploy:
+    permissions:
+      contents: read
+      packages: write
+
+    name: Build Images and Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set repo name to lowercase
+        id: repo_name
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create web-app .env file
+        run: echo 'GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}' > web-app/.env
+
+      - name: Build and push web-app image 🚀
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web-app
+          push: true
+          tags: ghcr.io/${{ steps.repo_name.outputs.name }}/web-app:${{ github.sha }}
+          cache-from: type=gha,scope=web-app
+          cache-to: type=gha,mode=max,scope=web-app
+
+      - name: Ensure remote deploy directory exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p /home/github-actions/codered-astra
+
+      - name: Upload compose files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml,docker-compose.prod.yml"
+          target: "/home/github-actions/codered-astra/"
+
+      - name: Deploy to server via SSH ☁️
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          RUNNER_GH_ACTOR: ${{ github.actor }}
+          RUNNER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # pass selected env vars to the remote shell so docker login works
+          envs: RUNNER_GITHUB_TOKEN,RUNNER_GH_ACTOR
+          debug: true
+          script: |
+            cd /home/github-actions/codered-astra
+            chmod -R o+rX rust-engine/demo-data
+            # wrapper to support both Docker Compose v2 and legacy v1
+            compose() { docker compose "$@" || docker-compose "$@"; }
+            # Log in to GHCR using the run's GITHUB_TOKEN so compose can pull images.
+            if [ -n "$RUNNER_GITHUB_TOKEN" ] && [ -n "$RUNNER_GH_ACTOR" ]; then
+              echo "$RUNNER_GITHUB_TOKEN" | docker login ghcr.io -u "$RUNNER_GH_ACTOR" --password-stdin || true
+            fi
+            export REPO_NAME_LOWER='${{ steps.repo_name.outputs.name }}'
+            export GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}'
+            export MYSQL_DATABASE='${{ secrets.MYSQL_DATABASE }}'
+            export MYSQL_USER='${{ secrets.MYSQL_USER }}'
+            export MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}'
+            export MYSQL_ROOT_PASSWORD='${{ secrets.MYSQL_ROOT_PASSWORD }}'
+            export IMAGE_TAG=${{ github.sha }}
+            # Stop and remove old containers before pulling new images
+            compose -f docker-compose.prod.yml down
+            # Clear previous logs for a clean deployment log
+            : > ~/astra-logs/astra-errors.log || true
+            compose -f docker-compose.prod.yml pull
+            compose -f docker-compose.prod.yml up -d
+            # Security hygiene: remove GHCR credentials after pulling
+            docker logout ghcr.io || true
