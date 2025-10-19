@@ -3,7 +3,7 @@
 
 # --- Stage 1: Builder ---
 # Use a stable Rust version
-FROM rust:1.85-slim AS builder
+FROM rust:1.88-slim AS builder
 WORKDIR /usr/src/app
 
 # Install build dependencies needed for sqlx
@@ -54,11 +54,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     cargo build --release || true
 
 
-# Now copy the real source and build the final binary
+# Remove dummy main.rs before copying the real source
+RUN rm -f src/main.rs
 COPY src ./src
-# Remove dummy main.rs if present, then build the real binary in one step to avoid cache issues
-RUN if grep -q 'cargo cache build' src/main.rs 2>/dev/null; then rm src/main.rs; fi \
-    && cargo build --release --locked
+RUN cargo build --release --locked
 
 # --- Stage 2: Final, small image ---
 
