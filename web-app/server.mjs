@@ -43,8 +43,8 @@ app.post('/api/files/import-demo', async (req, res) => {
 const distDir = path.resolve(__dirname, 'dist');
 app.use(express.static(distDir));
 
-// SPA fallback
-app.get('*', (req, res) => {
+// SPA fallback (Express 5 requires middleware instead of bare '*')
+app.use((req, res) => {
   res.sendFile(path.join(distDir, 'index.html'));
 });
 
