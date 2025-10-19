@@ -64,7 +64,8 @@ pub fn routes(pool: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
         .and(pool_filter.clone())
         .and_then(handle_cancel_query);
 
-    upload.or(delete).or(list).or(create_q).or(status).or(result).or(cancel)
+    let api = upload.or(delete).or(list).or(create_q).or(status).or(result).or(cancel);
+    warp::path("api").and(api)
 }
 
 async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply, Rejection> {
@@ -73,7 +74,7 @@ async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply
     let qdrant = QdrantClient::new(&qdrant_url);
 
     while let Some(field) = form.try_next().await.map_err(|_| warp::reject())? {
-        let name = field.name().to_string();
+    let _name = field.name().to_string();
         let filename = field
             .filename()
             .map(|s| s.to_string())
@@ -102,33 +103,21 @@ async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply
         // Save file
         let path = storage::save_file(&filename, &data).map_err(|_| warp::reject())?;
 
-        // Generate gemini token/description (stub)
-        let token = gemini_client::generate_token_for_file(path.to_str().unwrap()).await.map_err(|_| warp::reject())?;
-
-        // Insert file record
+        // Insert file record with pending_analysis = true, description = NULL
         let id = uuid::Uuid::new_v4().to_string();
-        let desc = Some(format!("token:{}", token));
-        sqlx::query("INSERT INTO files (id, filename, path, description) VALUES (?, ?, ?, ?)")
+        sqlx::query("INSERT INTO files (id, filename, path, description, pending_analysis) VALUES (?, ?, ?, ?, ?)")
             .bind(&id)
             .bind(&filename)
             .bind(path.to_str().unwrap())
-            .bind(desc)
+            .bind(Option::<String>::None)
+            .bind(true)
             .execute(&pool)
             .await
             .map_err(|e| {
                 tracing::error!("DB insert error: {}", e);
                 warp::reject()
             })?;
-
-        // generate demo embedding and upsert to Qdrant (async best-effort)
-        let emb = crate::gemini_client::demo_embedding_from_path(path.to_str().unwrap());
-        let qdrant_clone = qdrant.clone();
-        let id_clone = id.clone();
-        tokio::spawn(async move {
-            if let Err(e) = qdrant_clone.upsert_point(&id_clone, emb).await {
-                tracing::error!("qdrant upsert failed: {}", e);
-            }
-        });
+        // Enqueue worker task to process file (to be implemented)
     }
 
     Ok(warp::reply::json(&serde_json::json!({"success": true})))
@@ -143,7 +132,11 @@ async fn handle_delete(q: DeleteQuery, pool: MySqlPool) -> Result<impl Reply, Re
     {
         let path: String = row.get("path");
         let _ = storage::delete_file(std::path::Path::new(&path));
-    let _ = sqlx::query("DELETE FROM files WHERE id = ?").bind(&q.id).execute(&pool).await;
+        // Remove from Qdrant
+        let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
+        let qdrant = crate::vector_db::QdrantClient::new(&qdrant_url);
+        let _ = qdrant.delete_point(&q.id).await;
+        let _ = sqlx::query("DELETE FROM files WHERE id = ?").bind(&q.id).execute(&pool).await;
         return Ok(warp::reply::json(&serde_json::json!({"deleted": true})));
     }
     Ok(warp::reply::json(&serde_json::json!({"deleted": false})))

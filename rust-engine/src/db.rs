@@ -12,7 +12,9 @@ pub async fn init_db(database_url: &str) -> Result<MySqlPool, sqlx::Error> {
             filename TEXT NOT NULL,
             path TEXT NOT NULL,
             description TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            pending_analysis BOOLEAN DEFAULT TRUE,
+            analysis_status VARCHAR(32) DEFAULT 'Queued'
         );
 
         CREATE TABLE IF NOT EXISTS queries (

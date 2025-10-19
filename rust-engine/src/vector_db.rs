@@ -10,6 +10,22 @@ pub struct QdrantClient {
 }
 
 impl QdrantClient {
+
+    /// Delete a point from collection 'files' by id
+    pub async fn delete_point(&self, id: &str) -> Result<()> {
+        let url = format!("{}/collections/files/points/delete", self.base);
+        let body = json!({
+            "points": [id]
+        });
+        let resp = self.client.post(&url).json(&body).send().await?;
+        let status = resp.status();
+        if status.is_success() {
+            Ok(())
+        } else {
+            let t = resp.text().await.unwrap_or_default();
+            Err(anyhow::anyhow!("qdrant delete failed: {} - {}", status, t))
+        }
+    }
     pub fn new(base: &str) -> Self {
         Self {
             base: base.trim_end_matches('/').to_string(),
@@ -55,8 +71,8 @@ impl QdrantClient {
         }
     }
 
-    /// Search top-k nearest points from 'files'
-    pub async fn search_top_k(&self, vector: Vec<f32>, k: usize) -> Result<Vec<String>> {
+    /// Search top-k nearest points from 'files', return (id, score)
+    pub async fn search_top_k(&self, vector: Vec<f32>, k: usize) -> Result<Vec<(String, f32)>> {
         let url = format!("{}/collections/files/points/search", self.base);
         let body = json!({
             "vector": vector,
@@ -69,19 +85,19 @@ impl QdrantClient {
             return Err(anyhow::anyhow!("qdrant search failed: {} - {}", status, t));
         }
         #[derive(Deserialize)]
-        struct Hit { id: serde_json::Value }
+        struct Hit { id: serde_json::Value, score: f32 }
         #[derive(Deserialize)]
         struct Data { result: Vec<Hit> }
         let data: Data = resp.json().await?;
-        let mut ids = Vec::new();
+        let mut out = Vec::new();
         for h in data.result {
             // id can be string or number; handle string
             if let Some(s) = h.id.as_str() {
-                ids.push(s.to_string());
+                out.push((s.to_string(), h.score));
             } else {
-                ids.push(h.id.to_string());
+                out.push((h.id.to_string(), h.score));
             }
         }
-        Ok(ids)
+        Ok(out)
     }
 }
