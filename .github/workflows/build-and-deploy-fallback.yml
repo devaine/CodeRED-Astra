@@ -1,6 +1,6 @@
 # .github/workflows/build-and-deploy.yml
 
-name: Build and Deploy
+name: Build and Deploy Fallback
 
 on:
   push:

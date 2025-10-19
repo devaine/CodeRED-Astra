@@ -1,5 +1,6 @@
 use crate::gemini_client::{demo_text_embedding, generate_text_with_model, DEMO_EMBED_DIM};
 use crate::models::{QueryRecord, QueryStatus};
+use crate::storage;
 use crate::vector;
 use crate::vector_db::QdrantClient;
 use anyhow::Result;
@@ -129,7 +130,7 @@ impl Worker {
         // Stage 4: fetch file metadata for IDs
         let mut files_json = Vec::new();
         for (fid, score) in hits {
-            if let Some(row) = sqlx::query("SELECT id, filename, path, description FROM files WHERE id = ? AND pending_analysis = FALSE")
+            if let Some(row) = sqlx::query("SELECT id, filename, path, description, analysis_status FROM files WHERE id = ? AND pending_analysis = FALSE")
                 .bind(&fid)
                 .fetch_optional(&self.pool)
                 .await? {
@@ -138,8 +139,16 @@ impl Worker {
                 let filename: String = row.get("filename");
                 let path: String = row.get("path");
                 let description: Option<String> = row.get("description");
+                let status: Option<String> = row.try_get("analysis_status").ok();
+                let storage_url = storage::public_url_for(&filename);
                 files_json.push(serde_json::json!({
-                    "id": id, "filename": filename, "path": path, "description": description, "score": score
+                    "id": id,
+                    "filename": filename,
+                    "path": path,
+                    "storage_url": storage_url,
+                    "description": description,
+                    "analysis_status": status,
+                    "score": score
                 }));
             }
         }

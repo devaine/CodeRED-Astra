@@ -1,9 +1,11 @@
 use crate::gemini_client::{demo_text_embedding, generate_text_with_model, DEMO_EMBED_DIM};
 use crate::vector;
 use crate::vector_db::QdrantClient;
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
+use pdf_extract::extract_text;
 use sqlx::MySqlPool;
-use tracing::{error, info};
+use std::path::PathBuf;
+use tracing::{error, info, warn};
 
 pub struct FileWorker {
     pool: MySqlPool,
@@ -72,17 +74,33 @@ impl FileWorker {
             .fetch_one(&self.pool)
             .await?;
         let filename: String = row.get("filename");
-        let _path: String = row.get("path");
+        let path: String = row.get("path");
+
+        let (file_excerpt, truncated) = match extract_file_excerpt(&path).await {
+            Ok(res) => res,
+            Err(err) => {
+                error!(file_id, %filename, %path, error = ?err, "failed to extract text from file; continuing with filename only");
+                (String::new(), false)
+            }
+        };
+        if file_excerpt.is_empty() {
+            warn!(file_id, %filename, %path, "extracted excerpt is empty; prompts may lack context");
+        }
+
+        let excerpt_note = if truncated {
+            "(excerpt truncated for prompt size)"
+        } else {
+            ""
+        };
 
         // Stage 1: Gemini 2.5 Flash for description
-        let desc = generate_text_with_model(
-            "gemini-2.5-flash",
-            &format!(
-                "Describe the file '{filename}' and extract all key components, keywords, and details for later vectorization. Be comprehensive and factual."
-            ),
-        )
-        .await
-        .unwrap_or_else(|e| format!("[desc error: {}]", e));
+        let desc_prompt = format!(
+            "You are reviewing the PDF file '{filename}'. Use the following extracted text {excerpt_note} to produce a concise, factual description and key highlights that will help downstream search and reasoning.\n\n--- BEGIN EXCERPT ---\n{}\n--- END EXCERPT ---",
+            file_excerpt
+        );
+        let desc = generate_text_with_model("gemini-2.5-flash", &desc_prompt)
+            .await
+            .unwrap_or_else(|e| format!("[desc error: {}]", e));
         sqlx::query(
             "UPDATE files SET description = ?, analysis_status = 'InProgress' WHERE id = ?",
         )
@@ -92,14 +110,13 @@ impl FileWorker {
         .await?;
 
         // Stage 2: Gemini 2.5 Pro for deep vector graph data
-        let vector_graph = generate_text_with_model(
-            "gemini-2.5-pro",
-            &format!(
-                "Given the file '{filename}' and its description: {desc}\nGenerate a set of vector graph data (keywords, use cases, relationships) that can be used for broad and precise search. Only include what is directly supported by the file."
-            ),
-        )
-        .await
-        .unwrap_or_else(|e| format!("[vector error: {}]", e));
+        let vector_prompt = format!(
+            "You are constructing vector search metadata for the PDF file '{filename}'.\nCurrent description: {desc}\nUse the extracted text {excerpt_note} below to derive precise keywords, thematic clusters, and relationships that are explicitly supported by the content. Provide richly structured bullet points grouped by themes.\n\n--- BEGIN EXCERPT ---\n{}\n--- END EXCERPT ---",
+            file_excerpt
+        );
+        let vector_graph = generate_text_with_model("gemini-2.5-pro", &vector_prompt)
+            .await
+            .unwrap_or_else(|e| format!("[vector error: {}]", e));
 
         // Stage 3: Embed and upsert to Qdrant
         let emb = demo_text_embedding(&vector_graph).await?;
@@ -137,4 +154,73 @@ impl FileWorker {
             .await?;
         Ok(())
     }
+}
+
+// Maximum number of characters from the extracted text to include in prompts.
+const MAX_EXCERPT_CHARS: usize = 4000;
+
+async fn extract_file_excerpt(path: &str) -> Result<(String, bool)> {
+    let path_buf = PathBuf::from(path);
+    let extension = path_buf
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_ascii_lowercase())
+        .unwrap_or_default();
+
+    let raw_text = if extension == "pdf" {
+        let pdf_path = path_buf.clone();
+        tokio::task::spawn_blocking(move || extract_text(&pdf_path))
+            .await
+            .map_err(|e| anyhow!("pdf text extraction task panicked: {e}"))??
+    } else {
+        let bytes = tokio::fs::read(&path_buf)
+            .await
+            .with_context(|| format!("reading file bytes from {path}"))?;
+        String::from_utf8_lossy(&bytes).into_owned()
+    };
+
+    let cleaned = raw_text.replace('\r', "");
+    let condensed = collapse_whitespace(&cleaned);
+    let (excerpt, truncated) = truncate_to_chars(&condensed, MAX_EXCERPT_CHARS);
+
+    Ok((excerpt, truncated))
+}
+
+fn truncate_to_chars(text: &str, max_chars: usize) -> (String, bool) {
+    if max_chars == 0 {
+        return (String::new(), !text.is_empty());
+    }
+
+    let mut result = String::new();
+    let mut chars = text.chars();
+    for _ in 0..max_chars {
+        match chars.next() {
+            Some(ch) => result.push(ch),
+            None => return (result, false),
+        }
+    }
+
+    if chars.next().is_some() {
+        result.push('…');
+        (result, true)
+    } else {
+        (result, false)
+    }
+}
+
+fn collapse_whitespace(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut prev_was_ws = false;
+    for ch in input.chars() {
+        if ch.is_whitespace() {
+            if !prev_was_ws {
+                output.push(' ');
+            }
+            prev_was_ws = true;
+        } else {
+            prev_was_ws = false;
+            output.push(ch);
+        }
+    }
+    output.trim().to_string()
 }
