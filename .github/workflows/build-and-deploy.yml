@@ -86,6 +86,7 @@ jobs:
           debug: true
           script: |
             cd /home/github-actions/codered-astra
+            chmod -R o+rX rust-engine/demo-data
             # wrapper to support both Docker Compose v2 and legacy v1
             compose() { docker compose "$@" || docker-compose "$@"; }
             # Log in to GHCR using the run's GITHUB_TOKEN so compose can pull images.
