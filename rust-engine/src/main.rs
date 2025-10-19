@@ -1,12 +1,12 @@
-mod file_worker;
 mod api;
 mod db;
+mod file_worker;
 mod gemini_client;
 mod models;
 mod storage;
 mod vector;
-mod worker;
 mod vector_db;
+mod worker;
 
 use std::env;
 use std::error::Error;
@@ -30,7 +30,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     storage::ensure_storage_dir().expect("storage dir");
 
     // Initialize DB
-    let pool = db::init_db(&database_url).await.map_err(|e| -> Box<dyn Error> { Box::new(e) })?;
+    let pool = db::init_db(&database_url)
+        .await
+        .map_err(|e| -> Box<dyn Error> { Box::new(e) })?;
 
     // Spawn query worker
     let worker = worker::Worker::new(pool.clone());
@@ -42,17 +44,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // API routes
     let api_routes = api::routes(pool.clone())
-        .with(warp::cors()
-            .allow_any_origin()
-            .allow_headers(vec!["content-type", "authorization"])
-            .allow_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"]))
+        .with(
+            warp::cors()
+                .allow_any_origin()
+                .allow_headers(vec!["content-type", "authorization"])
+                .allow_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"]),
+        )
         .with(warp::log("rust_engine"));
 
     info!("Rust Engine started on http://0.0.0.0:8000");
 
-    warp::serve(api_routes)
-        .run(([0, 0, 0, 0], 8000))
-        .await;
+    warp::serve(api_routes).run(([0, 0, 0, 0], 8000)).await;
 
     Ok(())
 }

@@ -11,6 +11,8 @@
 - DATABASE_URL: mysql://USER:PASS@HOST:3306/DB
 - QDRANT_URL: default <http://qdrant:6333>
 - GEMINI_API_KEY: used for Gemini content generation (optional in demo)
+- DEMO_DATA_DIR: path to the folder containing PDF demo data (default resolves to `demo-data` under the repo or `/app/demo-data` in containers)
+- ASTRA_STORAGE: directory for uploaded file blobs (default `/app/storage`)
 
 ## Endpoints (JSON)
 
@@ -19,7 +21,12 @@
   - Response: {"success": true}
 
 - GET /api/files/list
-  - Response: {"files": [{"id","filename","path","description"}]}
+  - Response: {"files": [{"id","filename","path","storage_url","description"}]}
+
+- POST /api/files/import-demo[?force=1]
+  - Copies PDFs from the demo directory into storage and queues them for analysis.
+  - Response: {"imported": N, "skipped": M, "files_found": K, "source_dir": "...", "attempted_paths": [...], "force": bool}
+  - `force=1` deletes prior records with the same filename before re-importing.
 
 - GET /api/files/delete?id=<file_id>
   - Response: {"deleted": true|false}
@@ -67,10 +74,10 @@
 2. set env DATABASE_URL and QDRANT_URL
 3. cargo run
 4. (optional) import demo PDFs
-   - Ensure demo files are located in `rust-engine/demo-data` (default) or set `DEMO_DATA_DIR` env var to a folder containing PDFs.
+   - Populate a folder with PDFs under `rust-engine/demo-data` (or point `DEMO_DATA_DIR` to a custom path). The server auto-resolves common locations such as the repo root, `/app/demo-data`, and the working directory when running in Docker.
    - Call the endpoint:
      - POST <http://localhost:8000/api/files/import-demo>
-     - Optional query `?force=1` to overwrite existing by filename
+  - Optional query `?force=1` to overwrite existing by filename. The JSON response also echoes where the engine looked (`source_dir`, `attempted_paths`) and how many PDFs were detected (`files_found`) so misconfigurations are easy to spot. Imported files are written to the shared `/app/storage` volume; the web-app container mounts this volume read-only and serves the contents at `/storage/<filename>`.
    - Or run the PowerShell helper:
      - `./scripts/import_demo.ps1` (adds all PDFs in demo-data)
      - `./scripts/import_demo.ps1 -Force` (overwrite existing)

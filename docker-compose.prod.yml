@@ -8,6 +8,8 @@ services:
       - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
       - RUST_ENGINE_URL=http://rust-engine:8000
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - rust-storage:/app/storage:ro
     depends_on:
       - mysql
       - rust-engine

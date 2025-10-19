@@ -1,10 +1,11 @@
-use crate::vector_db::QdrantClient;
 use crate::storage;
+use crate::vector_db::QdrantClient;
 use anyhow::Result;
 use bytes::Buf;
 use futures_util::TryStreamExt;
 use serde::Deserialize;
 use sqlx::{MySqlPool, Row};
+use tracing::info;
 use warp::{multipart::FormData, Filter, Rejection, Reply};
 
 #[derive(Debug, Deserialize)]
@@ -21,7 +22,7 @@ pub fn routes(pool: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
         .and(
             warp::query::<std::collections::HashMap<String, String>>()
                 .or(warp::any().map(|| std::collections::HashMap::new()))
-                .unify()
+                .unify(),
         )
         .and(pool_filter.clone())
         .and_then(handle_import_demo);
@@ -74,14 +75,21 @@ pub fn routes(pool: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
         .and(pool_filter.clone())
         .and_then(handle_cancel_query);
 
-    let api = upload.or(import_demo).or(delete).or(list).or(create_q).or(status).or(result).or(cancel);
+    let api = upload
+        .or(import_demo)
+        .or(delete)
+        .or(list)
+        .or(create_q)
+        .or(status)
+        .or(result)
+        .or(cancel);
     warp::path("api").and(api)
 }
 
 async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply, Rejection> {
     let mut created_files = Vec::new();
     while let Some(field) = form.try_next().await.map_err(|_| warp::reject())? {
-    let _name = field.name().to_string();
+        let _name = field.name().to_string();
         let filename = field
             .filename()
             .map(|s| s.to_string())
@@ -138,12 +146,21 @@ async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply
     })))
 }
 
-async fn handle_import_demo(params: std::collections::HashMap<String, String>, pool: MySqlPool) -> Result<impl Reply, Rejection> {
+async fn handle_import_demo(
+    params: std::collections::HashMap<String, String>,
+    pool: MySqlPool,
+) -> Result<impl Reply, Rejection> {
     use std::fs;
     use std::path::PathBuf;
-    let force = params.get("force").map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false);
-    let demo_dir_setting = std::env::var("DEMO_DATA_DIR").unwrap_or_else(|_| "demo-data".to_string());
+    let force = params
+        .get("force")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    let demo_dir_setting =
+        std::env::var("DEMO_DATA_DIR").unwrap_or_else(|_| "demo-data".to_string());
     let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
+    info!(force, requested_dir = %demo_dir_setting, "demo import requested");
 
     // Build a list of plausible demo-data locations so local runs and containers both work.
     let mut candidates: Vec<PathBuf> = Vec::new();
@@ -171,33 +188,45 @@ async fn handle_import_demo(params: std::collections::HashMap<String, String>, p
     let mut resolved_dir: Option<PathBuf> = None;
     for candidate in candidates {
         if candidate.exists() && candidate.is_dir() {
-            resolved_dir = Some(candidate);
+            resolved_dir = Some(candidate.clone());
             break;
         }
         attempted.push(candidate);
     }
 
+    let attempted_paths: Vec<String> = attempted.iter().map(|p| p.display().to_string()).collect();
     let src_dir = match resolved_dir {
         Some(path) => path,
         None => {
-            let attempted_paths: Vec<String> = attempted
-                .into_iter()
-                .map(|p| p.display().to_string())
-                .collect();
             return Ok(warp::reply::json(&serde_json::json!({
                 "imported": 0,
                 "skipped": 0,
-                "error": format!("demo dir not found (checked: {})", attempted_paths.join(", "))
+                "files_found": 0,
+                "attempted_paths": attempted_paths,
+                "error": format!("demo dir not found; set DEMO_DATA_DIR or bind mount demo PDFs")
             })));
         }
     };
+    let src_dir_display = src_dir.display().to_string();
+    info!(source = %src_dir_display, attempted_paths = ?attempted_paths, "demo import source resolved");
     let mut imported = 0;
     let mut skipped = 0;
+    let mut files_found = 0;
     for entry in fs::read_dir(&src_dir).map_err(|_| warp::reject())? {
         let entry = entry.map_err(|_| warp::reject())?;
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("pdf")).unwrap_or(false) {
-            let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown.pdf").to_string();
+        if path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.eq_ignore_ascii_case("pdf"))
+            .unwrap_or(false)
+        {
+            files_found += 1;
+            let filename = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown.pdf")
+                .to_string();
 
             // check if exists
             if !force {
@@ -205,8 +234,10 @@ async fn handle_import_demo(params: std::collections::HashMap<String, String>, p
                     .bind(&filename)
                     .fetch_optional(&pool)
                     .await
-                    .map_err(|_| warp::reject())? {
+                    .map_err(|_| warp::reject())?
+                {
                     skipped += 1;
+                    info!(%filename, "skipping demo import; already present");
                     continue;
                 }
             }
@@ -214,6 +245,7 @@ async fn handle_import_demo(params: std::collections::HashMap<String, String>, p
             // read and save to storage
             let data = fs::read(&path).map_err(|_| warp::reject())?;
             let stored_path = storage::save_file(&filename, &data).map_err(|_| warp::reject())?;
+            info!(%filename, dest = %stored_path.to_string_lossy(), "demo file copied to storage");
 
             // insert or upsert db record
             let id = uuid::Uuid::new_v4().to_string();
@@ -222,11 +254,12 @@ async fn handle_import_demo(params: std::collections::HashMap<String, String>, p
                     .bind(&filename)
                     .execute(&pool)
                     .await;
+                info!(%filename, "existing file records removed due to force import");
             }
             sqlx::query("INSERT INTO files (id, filename, path, description, pending_analysis, analysis_status) VALUES (?, ?, ?, ?, ?, 'Queued')")
                 .bind(&id)
                 .bind(&filename)
-                .bind(stored_path.to_str().unwrap())
+                .bind(stored_path.to_string_lossy().to_string())
                 .bind(Option::<String>::None)
                 .bind(true)
                 .execute(&pool)
@@ -235,10 +268,36 @@ async fn handle_import_demo(params: std::collections::HashMap<String, String>, p
                     tracing::error!("DB insert error: {}", e);
                     warp::reject()
                 })?;
+            info!(%filename, file_id = %id, "demo file inserted into database");
+
+            // queue for worker
+            sqlx::query("INSERT INTO file_jobs (file_id, status) VALUES (?, 'Queued')")
+                .bind(&id)
+                .execute(&pool)
+                .await
+                .map_err(|_| warp::reject())?;
+            info!(%filename, file_id = %id, "demo file queued for analysis");
+
             imported += 1;
         }
     }
-    Ok(warp::reply::json(&serde_json::json!({ "imported": imported, "skipped": skipped })))
+    info!(
+        source = %src_dir_display,
+        files_found,
+        attempted_paths = ?attempted_paths,
+        imported,
+        skipped,
+        force,
+        "demo import completed"
+    );
+    Ok(warp::reply::json(&serde_json::json!({
+        "imported": imported,
+        "skipped": skipped,
+        "files_found": files_found,
+        "source_dir": src_dir_display,
+        "attempted_paths": attempted_paths,
+        "force": force
+    })))
 }
 
 async fn handle_delete(q: DeleteQuery, pool: MySqlPool) -> Result<impl Reply, Rejection> {
@@ -251,10 +310,14 @@ async fn handle_delete(q: DeleteQuery, pool: MySqlPool) -> Result<impl Reply, Re
         let path: String = row.get("path");
         let _ = storage::delete_file(std::path::Path::new(&path));
         // Remove from Qdrant
-        let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
+        let qdrant_url =
+            std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
         let qdrant = QdrantClient::new(&qdrant_url);
         let _ = qdrant.delete_point(&q.id).await;
-        let _ = sqlx::query("DELETE FROM files WHERE id = ?").bind(&q.id).execute(&pool).await;
+        let _ = sqlx::query("DELETE FROM files WHERE id = ?")
+            .bind(&q.id)
+            .execute(&pool)
+            .await;
         return Ok(warp::reply::json(&serde_json::json!({"deleted": true})));
     }
     Ok(warp::reply::json(&serde_json::json!({"deleted": false})))
@@ -268,7 +331,6 @@ async fn handle_list(pool: MySqlPool) -> Result<impl Reply, Rejection> {
             tracing::error!("DB list error: {}", e);
             warp::reject()
         })?;
-
     let files: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|r| {
@@ -278,10 +340,12 @@ async fn handle_list(pool: MySqlPool) -> Result<impl Reply, Rejection> {
             let description: Option<String> = r.get("description");
             let pending: bool = r.get("pending_analysis");
             let status: Option<String> = r.try_get("analysis_status").ok();
+            let storage_url = format!("/storage/{}", filename);
             serde_json::json!({
                 "id": id,
                 "filename": filename,
                 "path": path,
+                "storage_url": storage_url,
                 "description": description,
                 "pending_analysis": pending,
                 "analysis_status": status
@@ -292,7 +356,10 @@ async fn handle_list(pool: MySqlPool) -> Result<impl Reply, Rejection> {
     Ok(warp::reply::json(&serde_json::json!({"files": files})))
 }
 
-async fn handle_create_query(body: serde_json::Value, pool: MySqlPool) -> Result<impl Reply, Rejection> {
+async fn handle_create_query(
+    body: serde_json::Value,
+    pool: MySqlPool,
+) -> Result<impl Reply, Rejection> {
     // Insert query as queued, worker will pick it up
     let id = uuid::Uuid::new_v4().to_string();
     let payload = body;
@@ -317,9 +384,11 @@ async fn handle_query_status(q: DeleteQuery, pool: MySqlPool) -> Result<impl Rep
         .map_err(|_| warp::reject())?
     {
         let status: String = row.get("status");
-        return Ok(warp::reply::json(&serde_json::json!({"status": status}))); 
+        return Ok(warp::reply::json(&serde_json::json!({"status": status})));
     }
-    Ok(warp::reply::json(&serde_json::json!({"status": "not_found"})))
+    Ok(warp::reply::json(
+        &serde_json::json!({"status": "not_found"}),
+    ))
 }
 
 async fn handle_query_result(q: DeleteQuery, pool: MySqlPool) -> Result<impl Reply, Rejection> {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use reqwest::Client;
-use serde_json::json;
 use serde::Deserialize;
+use serde_json::json;
 
 #[derive(Clone)]
 pub struct QdrantClient {
@@ -10,7 +10,6 @@ pub struct QdrantClient {
 }
 
 impl QdrantClient {
-
     /// Delete a point from collection 'files' by id
     pub async fn delete_point(&self, id: &str) -> Result<()> {
         let url = format!("{}/collections/files/points/delete", self.base);
@@ -67,7 +66,11 @@ impl QdrantClient {
         } else {
             let status = resp.status();
             let t = resp.text().await.unwrap_or_default();
-            Err(anyhow::anyhow!("qdrant ensure collection failed: {} - {}", status, t))
+            Err(anyhow::anyhow!(
+                "qdrant ensure collection failed: {} - {}",
+                status,
+                t
+            ))
         }
     }
 
@@ -85,9 +88,14 @@ impl QdrantClient {
             return Err(anyhow::anyhow!("qdrant search failed: {} - {}", status, t));
         }
         #[derive(Deserialize)]
-        struct Hit { id: serde_json::Value, score: f32 }
+        struct Hit {
+            id: serde_json::Value,
+            score: f32,
+        }
         #[derive(Deserialize)]
-        struct Data { result: Vec<Hit> }
+        struct Data {
+            result: Vec<Hit>,
+        }
         let data: Data = resp.json().await?;
         let mut out = Vec::new();
         for h in data.result {
