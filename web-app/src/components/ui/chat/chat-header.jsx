@@ -5,7 +5,7 @@ import DeleteButton from "src/components/ui/button/delete-button";
 import FileList from "src/components/ui/file/file-list";
 
 export default function ChatHeader({
-  title = "Schematic Spelunker",
+  title = "Schematic Spelunker", 
   onDeleteAll,
 }) {
   const isDebug = useMemo(() => {
