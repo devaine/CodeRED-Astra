@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import DeleteButton from "src/components/ui/button/delete-button";
 import DownButton from "../button/down-button";
 
-export default function MessageInput({ onSend }) {
+export default function MessageInput({ onSend, onDeleteAll }) {
   const [text, setText] = useState("");
 
   function handleSubmit(e) {
@@ -15,7 +15,7 @@ export default function MessageInput({ onSend }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-between">
-        <DeleteButton></DeleteButton>
+        <DeleteButton onClick={onDeleteAll}></DeleteButton>
         <DownButton></DownButton>
       </div>
       <form onSubmit={handleSubmit} className="bg-gray-900 rounded-2xl">

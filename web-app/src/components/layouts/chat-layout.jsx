@@ -24,11 +24,16 @@ export default function ChatLayout() {
     }, 600);
   }
 
+  function handleDeleteAll() {
+    if (!window.confirm("Delete all messages?")) return;
+    setMessages([]);
+  }
+
   return (
     <div className="flex flex-col">
       <ChatHeader />
       <ChatWindow messages={messages} />
-      <MessageInput onSend={handleSend} />
+      <MessageInput onSend={handleSend} onDeleteAll={handleDeleteAll} />
     </div>
   );
 }
