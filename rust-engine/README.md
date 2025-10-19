@@ -66,6 +66,14 @@
 1. docker compose up -d mysql qdrant
 2. set env DATABASE_URL and QDRANT_URL
 3. cargo run
+4. (optional) import demo PDFs
+   - Ensure demo files are located in `rust-engine/demo-data` (default) or set `DEMO_DATA_DIR` env var to a folder containing PDFs.
+   - Call the endpoint:
+     - POST <http://localhost:8000/api/files/import-demo>
+     - Optional query `?force=1` to overwrite existing by filename
+   - Or run the PowerShell helper:
+     - `./scripts/import_demo.ps1` (adds all PDFs in demo-data)
+     - `./scripts/import_demo.ps1 -Force` (overwrite existing)
 
 ## Notes
 

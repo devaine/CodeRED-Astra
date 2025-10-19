@@ -6,4 +6,4 @@ RUN npm ci
 COPY . .
 RUN npm run format && npm run build
 EXPOSE 3000
-CMD ["npm", "run", "preview"]
+CMD ["node", "server.mjs"]
