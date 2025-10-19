@@ -2,6 +2,7 @@ use crate::gemini_client::{demo_text_embedding, generate_text_with_model, DEMO_E
 use crate::vector;
 use crate::vector_db::QdrantClient;
 use anyhow::{anyhow, Context, Result};
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use pdf_extract::extract_text;
 use sqlx::MySqlPool;
 use std::path::PathBuf;
@@ -87,17 +88,37 @@ impl FileWorker {
             warn!(file_id, %filename, %path, "extracted excerpt is empty; prompts may lack context");
         }
 
+        let (raw_base64, raw_truncated) = match read_file_base64(&path).await {
+            Ok(tuple) => tuple,
+            Err(err) => {
+                warn!(file_id, %filename, %path, error = ?err, "failed to read raw file bytes for prompt");
+                (String::new(), false)
+            }
+        };
+
         let excerpt_note = if truncated {
             "(excerpt truncated for prompt size)"
         } else {
             ""
         };
 
+        let raw_note = if raw_truncated {
+            "(base64 truncated to first 512KB)"
+        } else {
+            "(base64)"
+        };
+
         // Stage 1: Gemini 2.5 Flash for description
-        let desc_prompt = format!(
+        let mut desc_prompt = format!(
             "You are reviewing the PDF file '{filename}'. Use the following extracted text {excerpt_note} to produce a concise, factual description and key highlights that will help downstream search and reasoning.\n\n--- BEGIN EXCERPT ---\n{}\n--- END EXCERPT ---",
             file_excerpt
         );
+        if !raw_base64.is_empty() {
+            desc_prompt.push_str(&format!(
+                "\n\n--- BEGIN RAW FILE {raw_note} ---\n{}\n--- END RAW FILE ---",
+                raw_base64
+            ));
+        }
         let desc = generate_text_with_model("gemini-2.5-flash", &desc_prompt)
             .await
             .unwrap_or_else(|e| format!("[desc error: {}]", e));
@@ -110,10 +131,16 @@ impl FileWorker {
         .await?;
 
         // Stage 2: Gemini 2.5 Pro for deep vector graph data
-        let vector_prompt = format!(
+        let mut vector_prompt = format!(
             "You are constructing vector search metadata for the PDF file '{filename}'.\nCurrent description: {desc}\nUse the extracted text {excerpt_note} below to derive precise keywords, thematic clusters, and relationships that are explicitly supported by the content. Provide richly structured bullet points grouped by themes.\n\n--- BEGIN EXCERPT ---\n{}\n--- END EXCERPT ---",
             file_excerpt
         );
+        if !raw_base64.is_empty() {
+            vector_prompt.push_str(&format!(
+                "\n\n--- BEGIN RAW FILE {raw_note} ---\n{}\n--- END RAW FILE ---",
+                raw_base64
+            ));
+        }
         let vector_graph = generate_text_with_model("gemini-2.5-pro", &vector_prompt)
             .await
             .unwrap_or_else(|e| format!("[vector error: {}]", e));
@@ -158,6 +185,7 @@ impl FileWorker {
 
 // Maximum number of characters from the extracted text to include in prompts.
 const MAX_EXCERPT_CHARS: usize = 4000;
+const MAX_RAW_BYTES: usize = 512 * 1024; // limit base64 payload fed into prompts
 
 async fn extract_file_excerpt(path: &str) -> Result<(String, bool)> {
     let path_buf = PathBuf::from(path);
@@ -223,4 +251,19 @@ fn collapse_whitespace(input: &str) -> String {
         }
     }
     output.trim().to_string()
+}
+
+async fn read_file_base64(path: &str) -> Result<(String, bool)> {
+    let bytes = tokio::fs::read(path).await?;
+    if bytes.is_empty() {
+        return Ok((String::new(), false));
+    }
+    let truncated = bytes.len() > MAX_RAW_BYTES;
+    let slice = if truncated {
+        &bytes[..MAX_RAW_BYTES]
+    } else {
+        &bytes[..]
+    };
+    let encoded = BASE64_STANDARD.encode(slice);
+    Ok((encoded, truncated))
 }

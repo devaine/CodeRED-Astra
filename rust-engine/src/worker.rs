@@ -191,6 +191,7 @@ impl Worker {
                     "filename": filename,
                     "path": path,
                     "storage_url": storage_url,
+                    "raw_url": storage_url,
                     "description": description,
                     "analysis_status": analysis_status,
                     "score": score
@@ -223,6 +224,7 @@ impl Worker {
                 "filename": filename,
                 "path": path,
                 "storage_url": storage_url,
+                "raw_url": storage_url,
                 "description": description,
                 "analysis_status": analysis_status,
                 "score": serde_json::Value::Null
