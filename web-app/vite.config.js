@@ -20,5 +20,8 @@ export default defineConfig({
   // Defines envrionmental files across all src code b/c prefix is usually "VITE"
 	define: {
 		'import.meta.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
-	}
+	},
+  preview: {
+    allowHost: "astrachat.christbru.services"
+  }
 });
