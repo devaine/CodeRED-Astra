@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import DeleteButton from "src/components/ui/button/delete-button";
 import DownButton from "src/components/ui/button/down-button";
 import { motion } from "motion/react";
 import { BotMessageSquare } from "lucide-react";
@@ -24,11 +23,7 @@ export default function MessageInput({ onSend }) {
     <div className="w-full flex justify-center">
       <footer className="fixed bottom-6 max-w-3xl w-full px-4">
         <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-end">
-            <div className="flex">
-              <DownButton></DownButton>
-            </div>
-          </div>
+          <DownButton></DownButton>
           <form
             onSubmit={handleSubmit}
             className="bg-gray-900 rounded-2xl border-2 border-gray-800 shadow-lg shadow-indigo-600"
