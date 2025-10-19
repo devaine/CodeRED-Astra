@@ -59,15 +59,20 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     cargo build --release
 
 # --- Stage 2: Final, small image ---
+
 FROM debian:bookworm-slim
-# Install only necessary runtime dependencies
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libssl3 \
-    && rm -rf /var/lib/apt/lists/*
+# Install only necessary runtime dependencies (no upgrade, just ca-certificates)
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Add a non-root user for security
+RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin appuser
 
 # Copy the compiled binary from the builder stage
+
+# Copy the compiled binary and set ownership
 COPY --from=builder /usr/src/app/target/release/rust-engine /usr/local/bin/rust-engine
+RUN chown appuser:appuser /usr/local/bin/rust-engine
 
 EXPOSE 8000
+USER appuser
 CMD ["rust-engine"]
