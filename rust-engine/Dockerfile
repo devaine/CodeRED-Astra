@@ -53,7 +53,7 @@ RUN cargo build --release --locked
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin appuser
+RUN useradd --system --uid 1004 --no-create-home --shell /usr/sbin/nologin appuser
 
 # Copy the compiled binary from the builder stage
 COPY --from=builder /usr/src/app/target/release/rust-engine /usr/local/bin/rust-engine
