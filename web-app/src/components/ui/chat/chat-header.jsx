@@ -5,7 +5,7 @@ export default function ChatHeader({ title = "Title of Chat" }) {
     <div className="w-full flex justify-center">
       <header className="text-slate-100 fixed top-4 ">
         <div>
-          <h1 className="text-lg font-semibold shadow-lg shadow-indigo-600 bg-gray-900 px-6 py-2 rounded-4xl border-2 border-gray-800">
+          <h1 className="text-lg font-semibold shadow-md shadow-indigo-600 bg-gray-900 px-6 py-2 rounded-4xl border-2 border-gray-800">
             {title}
           </h1>
         </div>

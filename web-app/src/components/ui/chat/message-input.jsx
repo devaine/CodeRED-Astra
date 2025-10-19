@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import DeleteButton from "src/components/ui/button/delete-button";
 import DownButton from "src/components/ui/button/down-button";
+import SchematicButton from "src/components/ui/button/schematic-button";
 import { motion } from "motion/react";
 import { BotMessageSquare } from "lucide-react";
 
@@ -19,7 +20,10 @@ export default function MessageInput({ onSend }) {
       <footer className="fixed bottom-6 max-w-2xl w-full px-4">
         <div className="flex flex-col gap-2">
           <div className="flex justify-between">
-            <DeleteButton></DeleteButton>
+            <div className="flex gap-2">
+              <SchematicButton></SchematicButton>
+              <DeleteButton></DeleteButton>
+            </div>
             <DownButton></DownButton>
           </div>
           <form
