@@ -3,20 +3,6 @@ import ChatHeader from "src/components/ui/chat/chat-header";
 import ChatWindow from "src/components/ui/chat/chat-window";
 import MessageInput from "src/components/ui/chat/message-input";
 
-import { GoogleGenAI } from "@google/genai"
-
-const ai = new GoogleGenAI({ apiKey: import.meta.env.GEMINI_API_KEY })
-
-async function AIRepsponse(userInputArray) {
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: userInputArray
-    })
-    return response.text
-  }
-
-let userInput = []
-
 export default function ChatLayout() {
   const [messages, setMessages] = useState([
     {
@@ -25,17 +11,15 @@ export default function ChatLayout() {
     },
   ]);
 
-  async function handleSend(text) {
-    userInput.push(text)
-    const res = await AIRepsponse(userInput)
-
+  function handleSend(text) {
     const userMsg = { role: "user", content: text };
     setMessages((s) => [...s, userMsg]);
 
+    // fake assistant reply after short delay
     setTimeout(() => {
       setMessages((s) => [
         ...s,
-        { role: "assistant", content: res },
+        { role: "assistant", content: `You said: ${text}` },
       ]);
     }, 600);
   }
@@ -46,7 +30,7 @@ export default function ChatLayout() {
   }
 
   return (
-    <div className="w-full max-w-4xl gap-4 p-4">
+    <div className="flex flex-col flex-start w-full max-w-3xl gap-4 p-4">
       <ChatHeader />
       <ChatWindow messages={messages} />
       <MessageInput onSend={handleSend} onDeleteAll={handleDeleteAll} />

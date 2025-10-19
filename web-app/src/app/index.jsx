@@ -5,6 +5,7 @@ function App() {
   return (
     <div className="dark min-h-screen bg-gray-950 text-white flex justify-center pt-12">
       <ChatLayout />
+      <div></div>
     </div>
   );
 }
