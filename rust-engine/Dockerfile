@@ -69,10 +69,13 @@ RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin appu
 
 # Copy the compiled binary from the builder stage
 
-# Copy the compiled binary and set ownership
 COPY --from=builder /usr/src/app/target/release/rust-engine /usr/local/bin/rust-engine
-RUN chown appuser:appuser /usr/local/bin/rust-engine
+RUN chown appuser:appuser /usr/local/bin/rust-engine \
+    && mkdir -p /var/log \
+    && touch /var/log/astra-errors.log \
+    && chown appuser:appuser /var/log/astra-errors.log
 
 EXPOSE 8000
 USER appuser
-CMD ["rust-engine"]
+# Redirect all output to /var/log/astra-errors.log for easy monitoring
+ENTRYPOINT ["/bin/sh", "-c", "/usr/local/bin/rust-engine >> /var/log/astra-errors.log 2>&1"]

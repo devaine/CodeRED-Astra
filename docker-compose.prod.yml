@@ -19,6 +19,8 @@ services:
       - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
     depends_on:
       - mysql
+    volumes:
+      - ~/astra-errors.log:/var/log/astra-errors.log
 
   mysql:
     image: mysql:8.0
