@@ -4,7 +4,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: ["deploytest"]
+    branches: ["main", "deploytest"]
 
 jobs:
   build-and-deploy:
@@ -19,7 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- NEW STEP TO FIX THE ERROR ---
       - name: Set repo name to lowercase
         id: repo_name
         run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
@@ -34,28 +33,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # --- Build and push one image for each service ---
       - name: Build and push web-app image 🚀
         uses: docker/build-push-action@v6
         with:
           context: ./web-app
           push: true
-          # CHANGED: Uses the new lowercase repo name
           tags: ghcr.io/${{ steps.repo_name.outputs.name }}/web-app:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Build and push Rust engine image ⚙️
         uses: docker/build-push-action@v6
         with:
           context: ./rust-engine
           push: true
-          # CHANGED: Uses the new lowercase repo name
           tags: ghcr.io/${{ steps.repo_name.outputs.name }}/rust-engine:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-      # --- Deploy the new images to your server ---
       - name: Deploy to server via SSH ☁️
         uses: appleboy/ssh-action@v1.0.3
         with:

@@ -1,38 +1,32 @@
 # rust-engine/Dockerfile
+
 # --- Stage 1: Builder ---
+# Use a stable Rust version
 FROM rust:1.82-slim AS builder
 WORKDIR /usr/src/app
 
-# Install build dependencies
+# Install build dependencies needed for sqlx
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy ONLY Cargo.toml
-COPY Cargo.toml ./
+# Copy the ENTIRE project at once. This ensures Cargo sees a valid project.
+COPY . .
 
-# --- KEY CHANGE: Create a dummy main.rs BEFORE fetching dependencies ---
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-
-# Now, generate the lock file and fetch dependencies
-RUN cargo update && cargo fetch
-
-# Remove the dummy file before copying the real source code
-RUN rm -rf src
-
-# Now copy the rest of your source code
-COPY src ./src
-
-# Build the project using the pre-fetched dependencies
+# Build the project. Cargo will resolve dependencies and compile.
 RUN cargo build --release
 
-# --- Stage 2: Final Image ---
+# --- Stage 2: Final, small image ---
 FROM debian:bookworm-slim
+# Install only necessary runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy the compiled binary from the builder stage
 COPY --from=builder /usr/src/app/target/release/rust-engine /usr/local/bin/rust-engine
+
 EXPOSE 8000
 CMD ["rust-engine"]
