@@ -2,8 +2,9 @@ import express from 'express';
 import path from 'node:path';
 import helmet from 'helmet';
 import cors from 'cors';
-import fetch from 'node-fetch';
-import { fileURLToPath } from 'node:url';
+import http from 'node:http';
+import https from 'node:https';
+import { URL, fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,24 +20,45 @@ const RUST_ENGINE_BASE =
 app.set('trust proxy', true);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
-app.use(express.json());
 
 app.get('/api/healthz', (_req, res) => {
   res.json({ status: 'ok', upstream: RUST_ENGINE_BASE });
 });
 
-// Proxy minimal API needed by the UI to the rust-engine container
-app.post('/api/files/import-demo', async (req, res) => {
-  try {
-    const qs = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
-    const url = `${RUST_ENGINE_BASE}/api/files/import-demo${qs}`;
-    const upstream = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: req.body ? JSON.stringify(req.body) : undefined });
-    const text = await upstream.text();
-    res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
-  } catch (err) {
-    console.error('import-demo proxy failed:', err);
-    res.status(502).json({ error: 'proxy_failed' });
-  }
+// Stream all /api requests directly to the rust engine (supports JSON, multipart, SSE, etc.)
+app.use('/api', (req, res) => {
+  const targetUrl = new URL(req.originalUrl, RUST_ENGINE_BASE);
+  const client = targetUrl.protocol === 'https:' ? https : http;
+
+  const headers = { ...req.headers, host: targetUrl.host };
+
+  const proxyReq = client.request(
+    targetUrl,
+    {
+      method: req.method,
+      headers,
+    },
+    (upstream) => {
+      res.status(upstream.statusCode || 502);
+      for (const [key, value] of Object.entries(upstream.headers)) {
+        if (typeof value !== 'undefined') {
+          res.setHeader(key, value);
+        }
+      }
+      upstream.pipe(res);
+    }
+  );
+
+  proxyReq.on('error', (err) => {
+    console.error('API proxy error:', err);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'proxy_failed' });
+    } else {
+      res.end();
+    }
+  });
+
+  req.pipe(proxyReq);
 });
 
 // Serve static frontend
