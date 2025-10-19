@@ -41,6 +41,13 @@ export default function MessageInput({ onSend }) {
                     ta.style.height = `${ta.scrollHeight}px`;
                   }
                 }}
+                onKeyDown={(e) => {
+                  // Enter to submit, Shift+Enter for newline
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
                 placeholder="Type a message..."
                 rows={1}
                 className="flex-1 mx-2 rounded-md shadow-2sx border-none focus:border-none focus:outline-none resize-none overflow-auto max-h-40"
