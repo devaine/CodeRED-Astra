@@ -23,7 +23,9 @@ export default function MessageInput({ onSend }) {
     <div className="w-full flex justify-center">
       <footer className="fixed bottom-6 max-w-3xl w-full px-4">
         <div className="flex flex-col gap-4">
-          <DownButton></DownButton>
+          <div>
+            <DownButton></DownButton>
+          </div>
           <form
             onSubmit={handleSubmit}
             className="bg-gray-900 rounded-2xl border-2 border-gray-800 shadow-lg shadow-indigo-600"
