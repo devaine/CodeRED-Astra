@@ -9,7 +9,7 @@ services:
       - RUST_ENGINE_URL=http://rust-engine:8000
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - rust-storage:/app/storage:ro
+      - /home/github-actions/codered-astra/rust-engine/demo-data:/app/storage:ro
     depends_on:
       - mysql
       - rust-engine
@@ -30,7 +30,7 @@ services:
     volumes:
       - ~/astra-logs:/var/log
       - rust-storage:/app/storage
-      - /var/www/codered-astra/rust-engine/demo-data:/app/demo-data:ro
+      - /home/github-actions/codered-astra/rust-engine/demo-data:/app/demo-data:ro
 
   mysql:
     image: mysql:8.0

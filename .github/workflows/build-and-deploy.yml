@@ -69,7 +69,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.yml,docker-compose.prod.yml"
+          source: "docker-compose.yml,docker-compose.prod.yml,rust-engine/demo-data"
           target: "/home/github-actions/codered-astra/"
 
       - name: Deploy to server via SSH ☁️
