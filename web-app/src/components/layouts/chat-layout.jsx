@@ -17,8 +17,6 @@ async function AIResponse(userInputArray) {
   return response.text;
 }
 
-let userInput = [];
-
 export default function ChatLayout() {
   const [messages, setMessages] = useState([
     {
@@ -27,6 +25,21 @@ export default function ChatLayout() {
     },
   ]);
 
+  async function handleSend(text) {
+    const userMsg = { role: "user", content: text };
+    userInput.push(text);
+    const res = await AIResponse(userInput);
+    setMessages((s) => [...s, userMsg]);
+    setTimeout(() => {
+      setMessages((s) => [...s, { role: "assistant", content: res }]);
+    }, 600);
+  }
+
+  function handleDeleteAll() {
+    if (!window.confirm("Delete all messages?")) return;
+    setMessages([]);
+  }
+
   return (
     <div className="flex flex-col flex-start w-full max-w-3xl gap-4 p-4">
       <ChatHeader onDeleteAll={handleDeleteAll} />
@@ -34,43 +47,4 @@ export default function ChatLayout() {
       <MessageInput onSend={handleSend} onDeleteAll={handleDeleteAll} />
     </div>
   );
-}
-
-function addMessage(role, content) {
-  const msg = { role, content };
-  setMessages((s) => [...s, msg]);
-}
-
-async function handleSend(text) {
-  const { setMessages } = useChatBackend();
-  const userMsg = { role: "user", content: text };
-
-  switch (setMessages) {
-    case "gemini":
-      userInput.push(text);
-      const res = await AIResponse(userInput);
-      setMessages((s) => [...s, userMsg]);
-      setTimeout(() => {
-        setMessages((s) => [...s, { role: "assistant", content: res }]);
-      }, 600);
-      break;
-    case "rust":
-      setMessages((s) => [...s, userMsg]);
-
-      // fake assistant reply after short delay
-      setTimeout(() => {
-        setMessages((s) => [
-          ...s,
-          { role: "assistant", content: `You said: ${text}` },
-        ]);
-      }, 600);
-      break;
-    default:
-      break;
-  }
-}
-
-function handleDeleteAll() {
-  if (!window.confirm("Delete all messages?")) return;
-  setMessages([]);
 }

@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import DownButton from "src/components/ui/button/down-button";
-import BackendToggle from "src/components/ui/button/backend-toggle";
-import ChatBackendContext from "src/context/chat-backend-context";
 import { motion } from "motion/react";
 import { BotMessageSquare } from "lucide-react";
 
