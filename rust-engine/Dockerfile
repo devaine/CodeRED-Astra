@@ -34,9 +34,11 @@ RUN mkdir -p src && echo "fn main() { println!(\"cargo cache build\"); }" > src/
 # Fetch and build dependencies (this will be cached until Cargo.toml changes)
 RUN cargo build --release || true
 
+
 # Now copy the real source and build the final binary
 COPY src ./src
-RUN rm -f src/main.rs || true
+# Only remove the dummy main.rs if it exists and is not the real one
+RUN if grep -q 'cargo cache build' src/main.rs 2>/dev/null; then rm src/main.rs; fi
 RUN cargo build --release
 
 # --- Stage 2: Final, small image ---
