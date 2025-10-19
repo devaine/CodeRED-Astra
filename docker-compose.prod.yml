@@ -19,7 +19,7 @@ services:
       - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
     depends_on:
       - mysql
-    user: 1004
+    user: "1004"
     volumes:
       - ~/astra-logs:/var/log
 
