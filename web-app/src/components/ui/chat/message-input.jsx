@@ -11,13 +11,13 @@ export default function MessageInput({ onSend }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-black">
-      <div className="flex shadow-lg">
+    <form onSubmit={handleSubmit} className="bg-gray-900 rounded-2xl">
+      <div className="flex p-4 shadow-xl">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a message..."
-          className="flex-1 rounded-md shadow-2sx"
+          className="flex-1 rounded-md shadow-2sx border-none focus:border-none focus:outline-none"
         />
         <button type="submit" className="">
           Send
