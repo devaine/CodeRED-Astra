@@ -56,11 +56,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 
 # Now copy the real source and build the final binary
 COPY src ./src
-# Only remove the dummy main.rs if it exists and is not the real one
-RUN if grep -q 'cargo cache build' src/main.rs 2>/dev/null; then rm src/main.rs; fi
-RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    cargo build --release
+# Remove dummy main.rs if present, then build the real binary in one step to avoid cache issues
+RUN if grep -q 'cargo cache build' src/main.rs 2>/dev/null; then rm src/main.rs; fi \
+    && cargo build --release --locked
 
 # --- Stage 2: Final, small image ---
 
