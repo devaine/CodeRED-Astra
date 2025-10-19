@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "mysql://astraadmin:password@mysql:3306/astra".to_string());
 
     info!("Starting Rust Engine...");
-    info!("Connecting to database: {}", database_url);
+    // info!("Connecting to database: {}", database_url);
 
     // Connect to database
     let pool = match MySqlPool::connect(&database_url).await {
