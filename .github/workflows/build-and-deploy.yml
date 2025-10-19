@@ -96,7 +96,9 @@ jobs:
             export MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}'
             export MYSQL_ROOT_PASSWORD='${{ secrets.MYSQL_ROOT_PASSWORD }}'
             export IMAGE_TAG=${{ github.sha }}
+            # Stop and remove old containers before pulling new images
+            compose -f docker-compose.prod.yml down
             compose -f docker-compose.prod.yml pull
-            compose -f docker-compose.prod.yml up -d --force-recreate
+            compose -f docker-compose.prod.yml up -d
             # Security hygiene: remove GHCR credentials after pulling
             docker logout ghcr.io || true
