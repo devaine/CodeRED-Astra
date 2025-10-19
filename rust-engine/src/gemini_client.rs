@@ -1,30 +1,11 @@
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use reqwest::Client;
+use serde::Deserialize;
+use serde_json::json;
 
-// NOTE: This is a small stub to represent where you'd call the Gemini API.
-// Replace with real API call and proper auth handling for production.
-
-#[derive(Debug, Deserialize)]
-pub struct GeminiTokenResponse {
-    pub token: String,
-}
-
-pub async fn generate_token_for_file(_path: &str) -> Result<String> {
-    Ok("gemini-token-placeholder".to_string())
-}
-
-/// Demo embedding generator - deterministic pseudo-embedding from filename/path
-pub fn demo_embedding_from_path(path: &str) -> Vec<f32> {
-    // Very simple: hash bytes into a small vector
-    let mut v = vec![0f32; 64];
-    for (i, b) in path.as_bytes().iter().enumerate() {
-        let idx = i % v.len();
-        v[idx] += (*b as f32) / 255.0;
-    }
-    v
-}
+// NOTE: This file provides lightweight helpers around the Gemini API. For the
+// hackathon demo we fall back to deterministic strings when the API key is not
+// configured so the flows still work end-to-end.
 
 pub const DEMO_EMBED_DIM: usize = 64;
 
@@ -38,16 +19,27 @@ pub async fn demo_text_embedding(text: &str) -> Result<Vec<f32>> {
     Ok(v)
 }
 
-/// Generate text with Gemini (Generative Language API). Falls back to a demo string if GEMINI_API_KEY is not set.
+/// Generate text using the default model (GEMINI_MODEL or gemini-2.5-pro).
+#[allow(dead_code)]
 pub async fn generate_text(prompt: &str) -> Result<String> {
+    let model = std::env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.5-pro".to_string());
+    generate_text_with_model(&model, prompt).await
+}
+
+/// Generate text with an explicit Gemini model. Falls back to a deterministic
+/// response when the API key is not set so the demo still runs.
+pub async fn generate_text_with_model(model: &str, prompt: &str) -> Result<String> {
     let api_key = match std::env::var("GEMINI_API_KEY") {
         Ok(k) if !k.is_empty() => k,
         _ => {
-            return Ok(format!("[demo] Gemini not configured. Prompt preview: {}", truncate(prompt, 240)));
+            return Ok(format!(
+                "[demo] Gemini ({}) not configured. Prompt preview: {}",
+                model,
+                truncate(prompt, 240)
+            ));
         }
     };
 
-    let model = std::env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-1.5-pro".to_string());
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
         model, api_key
@@ -62,7 +54,12 @@ pub async fn generate_text(prompt: &str) -> Result<String> {
     let status = resp.status();
     let txt = resp.text().await?;
     if !status.is_success() {
-        return Ok(format!("[demo] Gemini error {}: {}", status, truncate(&txt, 240)));
+        return Ok(format!(
+            "[demo] Gemini ({}) error {}: {}",
+            model,
+            status,
+            truncate(&txt, 240)
+        ));
     }
 
     #[derive(Deserialize)]
@@ -84,5 +81,9 @@ pub async fn generate_text(prompt: &str) -> Result<String> {
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max { s.to_string() } else { format!("{}…", &s[..max]) }
+    if s.len() <= max {
+        s.to_string()
+    } else {
+        format!("{}…", &s[..max])
+    }
 }

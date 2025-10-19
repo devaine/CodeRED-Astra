@@ -1,10 +1,11 @@
-use sqlx::{MySql, MySqlPool};
+use sqlx::MySqlPool;
 use tracing::info;
 
 pub async fn init_db(database_url: &str) -> Result<MySqlPool, sqlx::Error> {
     let pool = MySqlPool::connect(database_url).await?;
 
     // Create tables if they don't exist. Simple schema for demo/hackathon use.
+    // Note: MySQL requires separate statements for each CREATE TABLE
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS files (
@@ -15,8 +16,14 @@ pub async fn init_db(database_url: &str) -> Result<MySqlPool, sqlx::Error> {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             pending_analysis BOOLEAN DEFAULT TRUE,
             analysis_status VARCHAR(32) DEFAULT 'Queued'
-        );
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await?;
 
+    sqlx::query(
+        r#"
         CREATE TABLE IF NOT EXISTS queries (
             id VARCHAR(36) PRIMARY KEY,
             status VARCHAR(32) NOT NULL,
@@ -24,7 +31,7 @@ pub async fn init_db(database_url: &str) -> Result<MySqlPool, sqlx::Error> {
             result JSON,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        );
+        )
         "#,
     )
     .execute(&pool)

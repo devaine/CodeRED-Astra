@@ -1,9 +1,8 @@
-use crate::gemini_client;
 use crate::vector_db::QdrantClient;
 use crate::storage;
 use anyhow::Result;
 use bytes::Buf;
-use futures_util::{StreamExt, TryStreamExt};
+use futures_util::TryStreamExt;
 use serde::Deserialize;
 use sqlx::{MySqlPool, Row};
 use warp::{multipart::FormData, Filter, Rejection, Reply};
@@ -80,10 +79,7 @@ pub fn routes(pool: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
 }
 
 async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply, Rejection> {
-    // qdrant client
-    let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
-    let qdrant = QdrantClient::new(&qdrant_url);
-
+    let mut created_files = Vec::new();
     while let Some(field) = form.try_next().await.map_err(|_| warp::reject())? {
     let _name = field.name().to_string();
         let filename = field
@@ -116,7 +112,7 @@ async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply
 
         // Insert file record with pending_analysis = true, description = NULL
         let id = uuid::Uuid::new_v4().to_string();
-        sqlx::query("INSERT INTO files (id, filename, path, description, pending_analysis) VALUES (?, ?, ?, ?, ?)")
+        sqlx::query("INSERT INTO files (id, filename, path, description, pending_analysis, analysis_status) VALUES (?, ?, ?, ?, ?, 'Queued')")
             .bind(&id)
             .bind(&filename)
             .bind(path.to_str().unwrap())
@@ -128,10 +124,18 @@ async fn handle_upload(mut form: FormData, pool: MySqlPool) -> Result<impl Reply
                 tracing::error!("DB insert error: {}", e);
                 warp::reject()
             })?;
-        // Enqueue worker task to process file (to be implemented)
+        created_files.push(serde_json::json!({
+            "id": id,
+            "filename": filename,
+            "pending_analysis": true,
+            "analysis_status": "Queued"
+        }));
     }
 
-    Ok(warp::reply::json(&serde_json::json!({"success": true})))
+    Ok(warp::reply::json(&serde_json::json!({
+        "uploaded": created_files.len(),
+        "files": created_files
+    })))
 }
 
 async fn handle_import_demo(params: std::collections::HashMap<String, String>, pool: MySqlPool) -> Result<impl Reply, Rejection> {
@@ -209,7 +213,7 @@ async fn handle_delete(q: DeleteQuery, pool: MySqlPool) -> Result<impl Reply, Re
         let _ = storage::delete_file(std::path::Path::new(&path));
         // Remove from Qdrant
         let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://qdrant:6333".to_string());
-        let qdrant = crate::vector_db::QdrantClient::new(&qdrant_url);
+        let qdrant = QdrantClient::new(&qdrant_url);
         let _ = qdrant.delete_point(&q.id).await;
         let _ = sqlx::query("DELETE FROM files WHERE id = ?").bind(&q.id).execute(&pool).await;
         return Ok(warp::reply::json(&serde_json::json!({"deleted": true})));

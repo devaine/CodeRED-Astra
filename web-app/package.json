@@ -15,8 +15,8 @@
   "dependencies": {
     "@google/genai": "^1.25.0",
     "@tailwindcss/postcss": "^4.1.14",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
+  "@tailwindcss/vite": "^4.1.14",
+  "@vitejs/plugin-react-swc": "^3.7.0",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "class-variance-authority": "^0.7.1",
@@ -26,6 +26,7 @@
     "helmet": "^8.1.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "node-fetch": "^3.3.2",
     "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-bootstrap": "^2.10.10",
