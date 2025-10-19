@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # rust-engine/Dockerfile
 
 # --- Stage 1: Builder ---
@@ -32,14 +33,20 @@ COPY Cargo.toml Cargo.lock ./
 RUN mkdir -p src && echo "fn main() { println!(\"cargo cache build\"); }" > src/main.rs
 
 # Fetch and build dependencies (this will be cached until Cargo.toml changes)
-RUN cargo build --release || true
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=/usr/src/app/target,sharing=locked \
+    cargo build --release || true
 
 
 # Now copy the real source and build the final binary
 COPY src ./src
 # Only remove the dummy main.rs if it exists and is not the real one
 RUN if grep -q 'cargo cache build' src/main.rs 2>/dev/null; then rm src/main.rs; fi
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=/usr/src/app/target,sharing=locked \
+    cargo build --release
 
 # --- Stage 2: Final, small image ---
 FROM debian:bookworm-slim
