@@ -25,7 +25,7 @@ export default function ChatLayout() {
   }
 
   return (
-    <div className="flex flex-col h-[80vh] w-full max-w-3xl mx-auto rounded-lg overflow-hidden shadow-lg border border-slate-700">
+    <div className="flex flex-col">
       <ChatHeader />
       <ChatWindow messages={messages} />
       <MessageInput onSend={handleSend} />

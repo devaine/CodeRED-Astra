@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import ActionButton from "../Button/ActionButton";
+import DeleteButton from "src/components/ui/button/delete-button";
+import DownButton from "../button/down-button";
+
 export default function MessageInput({ onSend }) {
   const [text, setText] = useState("");
 
@@ -11,17 +13,27 @@ export default function MessageInput({ onSend }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 bg-slate-900">
-      <div className="flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <ActionButton children="Send" type="submit"></ActionButton>
-      
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between">
+        <DeleteButton></DeleteButton>
+        <DownButton></DownButton>
       </div>
-    </form>
+      <form onSubmit={handleSubmit} className="bg-gray-900 rounded-2xl">
+        <div className="flex p-2 shadow-xl">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 mx-2 rounded-md shadow-2sx border-none focus:border-none focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-gray-700 rounded-xl ml-4"
+          >
+            Send
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
