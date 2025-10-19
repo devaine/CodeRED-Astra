@@ -47,12 +47,12 @@ export const MARKDOWN_COMPONENTS = {
     />
   ),
   ul: ({ node, ...props }) => (
-    <ul className="list-disc list-inside ml-4 mb-2" {...props} />
+    <ul className="list-disc list-inside ml-4 mb-2 text-sm" {...props} />
   ),
   ol: ({ node, ...props }) => (
-    <ol className="list-decimal list-inside ml-4 mb-2" {...props} />
+    <ol className="list-decimal list-inside ml-4 mb-2 text-sm" {...props} />
   ),
-  li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+  li: ({ node, ...props }) => <li className="mb-1 text-sm" {...props} />,
   strong: ({ node, ...props }) => (
     <strong className="font-semibold" {...props} />
   ),
