@@ -51,20 +51,50 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Ensure remote deploy directory exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p /home/github-actions/codered-astra
+
+      - name: Upload compose files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml,docker-compose.prod.yml"
+          target: "/home/github-actions/codered-astra/"
+
       - name: Deploy to server via SSH ☁️
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           debug: true
           script: |
-            cd /var/www/codered-astra
+            cd /home/github-actions/codered-astra
+            # wrapper to support both Docker Compose v2 and legacy v1
+            compose() { docker compose "$@" || docker-compose "$@"; }
+            # Log in to GHCR to pull private images (requires GHCR_USERNAME and GHCR_TOKEN envs)
+            if [ -n "$GHCR_USERNAME" ] && [ -n "$GHCR_TOKEN" ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            fi
+            export REPO_NAME_LOWER='${{ steps.repo_name.outputs.name }}'
             export GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}'
             export MYSQL_DATABASE='${{ secrets.MYSQL_DATABASE }}'
             export MYSQL_USER='${{ secrets.MYSQL_USER }}'
             export MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}'
             export MYSQL_ROOT_PASSWORD='${{ secrets.MYSQL_ROOT_PASSWORD }}'
             export IMAGE_TAG=${{ github.sha }}
-            docker-compose pull
-            docker-compose up -d --force-recreate
+            compose -f docker-compose.prod.yml pull
+            compose -f docker-compose.prod.yml up -d --force-recreate
+            # Security hygiene: remove GHCR credentials after pulling
+            docker logout ghcr.io || true
