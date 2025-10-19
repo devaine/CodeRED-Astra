@@ -1,8 +1,7 @@
-import { createPartFromUri, GoogleGenAI } from "@google/genai"
-import 'dotenv/config'
+import { GoogleGenAI } from "@google/genai"
 import fs from "fs"
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+const ai = new GoogleGenAI({ apiKey: import.meta.env.GEMINI_API_KEY })
 
 async function uploadLocalPDFs() {
     var pdfList = fs.readdirSync("public/pdfs")
@@ -46,20 +45,3 @@ async function uploadLocalPDFs() {
         }
     })
 }
-
-async function main() {
-    const prompts = [
-        "If possible, using Gemini's Javascript API, how would you grab an image from a PDF sent to the API?"
-    ]
-
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompts
-    })
-
-    console.log(response.text)
-}
-
-uploadLocalPDFs()
-main()
-
