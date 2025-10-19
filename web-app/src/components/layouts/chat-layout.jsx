@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import ChatHeader from "src/components/ui/chat/chat-header";
 import ChatWindow from "src/components/ui/chat/chat-window";
 import MessageInput from "src/components/ui/chat/message-input";
-
+import '../../index.css'
 export default function ChatLayout() {
   const [messages, setMessages] = useState([
     {
@@ -24,11 +24,16 @@ export default function ChatLayout() {
     }, 600);
   }
 
+  function handleDeleteAll() {
+    if (!window.confirm("Delete all messages?")) return;
+    setMessages([]);
+  }
+
   return (
-    <div className="flex flex-col h-[80vh] w-full max-w-3xl mx-auto rounded-lg overflow-hidden shadow-lg border border-slate-700">
+    <div className="flex flex-col">
       <ChatHeader />
       <ChatWindow messages={messages} />
-      <MessageInput onSend={handleSend} />
+      <MessageInput onSend={handleSend} onDeleteAll={handleDeleteAll} />
     </div>
   );
 }

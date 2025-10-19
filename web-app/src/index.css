@@ -1,18 +1,16 @@
-@import "tailwindcss/preflight";
-@import "tailwindcss/utilities";
+@import "tailwindcss";
 
-:root {
-  --color-primary: 15 40 98;
-  --color-secondary: 79 95 118;
-  --color-accent: 158 54 58;
-  --color-paragraph: 255 255 255;
-  --color-background: 9 31 54;
+.dark {
+  --paragraph: 235, 236, 239;
+  --background: 15, 16, 26;
+  --primary: 158, 166, 214;
+  --secondary: 35, 50, 133;
+  --accent: 52, 75, 223;
+  background: rgba(var(--background));
 }
 
 body {
   margin: 0;
-  background-color: rgb(var(--color-background));
-  color: rgb(var(--color-paragraph));
   font-family:
     ui-sans-serif,
     system-ui,
