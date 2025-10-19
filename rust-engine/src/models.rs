@@ -9,6 +9,8 @@ pub struct FileRecord {
     pub path: String,
     pub description: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
+    pub pending_analysis: bool, // true if file is not yet ready for search
+    pub analysis_status: String, // 'Queued', 'InProgress', 'Completed', 'Failed'
 }
 
 impl FileRecord {
@@ -19,6 +21,8 @@ impl FileRecord {
             path: path.into(),
             description,
             created_at: None,
+            pending_analysis: true,
+            analysis_status: "Queued".to_string(),
         }
     }
 }

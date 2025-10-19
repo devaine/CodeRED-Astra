@@ -1,3 +1,4 @@
+mod file_worker;
 mod api;
 mod db;
 mod gemini_client;
@@ -31,9 +32,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize DB
     let pool = db::init_db(&database_url).await.map_err(|e| -> Box<dyn Error> { Box::new(e) })?;
 
-    // Spawn worker
+    // Spawn query worker
     let worker = worker::Worker::new(pool.clone());
     tokio::spawn(async move { worker.run().await });
+
+    // Spawn file analysis worker
+    let file_worker = file_worker::FileWorker::new(pool.clone());
+    tokio::spawn(async move { file_worker.run().await });
 
     // API routes
     let api_routes = api::routes(pool.clone())
