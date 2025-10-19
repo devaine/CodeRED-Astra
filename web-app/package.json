@@ -15,8 +15,8 @@
   "dependencies": {
     "@google/genai": "^1.25.0",
     "@tailwindcss/postcss": "^4.1.14",
-  "@tailwindcss/vite": "^4.1.14",
-  "@vitejs/plugin-react-swc": "^3.7.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react-swc": "^3.7.0",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "class-variance-authority": "^0.7.1",
@@ -40,7 +40,6 @@
   "packageManager": ">=npm@10.9.0",
   "devDependencies": {
     "@eslint/js": "^9.38.0",
-    "daisyui": "^5.3.7",
     "eslint": "^9.38.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.5",
