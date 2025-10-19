@@ -48,8 +48,6 @@ jobs:
           context: ./rust-engine
           push: true
           tags: ghcr.io/${{ steps.repo_name.outputs.name }}/rust-engine:${{ github.sha }}
-          build-args: |
-            RUSTUP_TOOLCHAIN=stable
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

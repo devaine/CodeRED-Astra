@@ -3,7 +3,7 @@
 
 # --- Stage 1: Builder ---
 # Use a stable Rust version
-FROM rust:1.82-slim AS builder
+FROM rust:1.85-slim AS builder
 WORKDIR /usr/src/app
 
 # Install build dependencies needed for sqlx
@@ -16,18 +16,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Allow override of toolchain (stable, nightly, or a pinned version)
-ARG RUSTUP_TOOLCHAIN=stable
+# Allow optional override of toolchain (e.g., nightly or a pinned version). Leave empty to use image default.
+ARG RUSTUP_TOOLCHAIN=
 
 # Use rustup and cargo from the official Rust image location
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
-# Ensure the selected toolchain is installed and set as default (fixes edition mismatches in CI)
-RUN /usr/local/cargo/bin/rustup toolchain install ${RUSTUP_TOOLCHAIN} \
-    && /usr/local/cargo/bin/rustup default ${RUSTUP_TOOLCHAIN}
+# Optionally install and set the selected toolchain. If not provided, keep the image's default toolchain.
+RUN if [ -n "${RUSTUP_TOOLCHAIN}" ]; then \
+            /usr/local/cargo/bin/rustup toolchain install "${RUSTUP_TOOLCHAIN}" && \
+            /usr/local/cargo/bin/rustup default "${RUSTUP_TOOLCHAIN}"; \
+        else \
+            /usr/local/cargo/bin/rustup show active-toolchain || true; \
+        fi
 
 # Copy manifest files first to leverage Docker layer caching for dependencies
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 
 # Create a dummy src to allow cargo to download dependencies into the cache layer
 RUN mkdir -p src && echo "fn main() { println!(\"cargo cache build\"); }" > src/main.rs
