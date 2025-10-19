@@ -45,7 +45,6 @@ COPY src ./src
 RUN if grep -q 'cargo cache build' src/main.rs 2>/dev/null; then rm src/main.rs; fi
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,target=/usr/src/app/target,sharing=locked \
     cargo build --release
 
 # --- Stage 2: Final, small image ---
