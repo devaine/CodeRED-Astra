@@ -1,9 +1,8 @@
 services:
-  web-app:
-    image: ghcr.io/${REPO_NAME_LOWER}/fallback-web-app:${IMAGE_TAG}
+  fallback-web-app:
+    image: ghcr.io/${REPO_NAME_LOWER}/web-app:${IMAGE_TAG}
     restart: always
     ports:
       - "127.0.0.1:3034:3000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-    depends_on:
