@@ -31,8 +31,15 @@ export default function ChatHeader({ title = "AI Assistant" }) {
             Ask anything — AI is listening
           </p>
         </div>
-        <ActionButton children='New Chat' type="add" onClick={handleNewChat}></ActionButton>
-        <ActionButton children='Delete Chat'type="delete" onClick={handleDeleteChat}></ActionButton>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <ActionButton type="add" onClick={handleNewChat}>
+          New Chat
+        </ActionButton>
+        <ActionButton type="delete" onClick={handleDeleteChat}>
+          Delete Chat
+        </ActionButton>
       </div>
     </header>
   );
