@@ -20,7 +20,7 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ~/astra-errors.log:/var/log/astra-errors.log
+      - ~/astra-logs:/var/log
 
   mysql:
     image: mysql:8.0

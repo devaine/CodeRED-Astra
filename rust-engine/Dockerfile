@@ -25,21 +25,25 @@ ENV PATH="/usr/local/cargo/bin:${PATH}"
 # Copy manifest files first to leverage Docker layer caching for dependencies
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 
-# Ensure the pinned toolchain from rust-toolchain.toml (or provided ARG) is installed in a cacheable layer
+# Ensure the pinned toolchain from rust-toolchain.toml (or provided ARG) is installed only if missing
 RUN set -eux; \
-        if [ -n "${RUSTUP_TOOLCHAIN}" ]; then \
-            rustup toolchain install "${RUSTUP_TOOLCHAIN}" && \
-            rustup default "${RUSTUP_TOOLCHAIN}"; \
-        else \
-            if [ -f rust-toolchain.toml ]; then \
-                TOOLCHAIN=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml | head -n1); \
-                if [ -n "$TOOLCHAIN" ]; then \
-                    rustup toolchain install "$TOOLCHAIN" && \
-                    rustup default "$TOOLCHAIN"; \
+    if [ -n "${RUSTUP_TOOLCHAIN}" ]; then \
+        if ! rustup toolchain list | grep -q "^${RUSTUP_TOOLCHAIN}"; then \
+            rustup toolchain install "${RUSTUP_TOOLCHAIN}"; \
+        fi; \
+        rustup default "${RUSTUP_TOOLCHAIN}"; \
+    else \
+        if [ -f rust-toolchain.toml ]; then \
+            TOOLCHAIN=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml | head -n1); \
+            if [ -n "$TOOLCHAIN" ]; then \
+                if ! rustup toolchain list | grep -q "^$TOOLCHAIN"; then \
+                    rustup toolchain install "$TOOLCHAIN"; \
                 fi; \
+                rustup default "$TOOLCHAIN"; \
             fi; \
         fi; \
-        rustup show active-toolchain || true
+    fi; \
+    rustup show active-toolchain || true
 
 # Create a dummy src to allow cargo to download dependencies into the cache layer
 RUN mkdir -p src && echo "fn main() { println!(\"cargo cache build\"); }" > src/main.rs
