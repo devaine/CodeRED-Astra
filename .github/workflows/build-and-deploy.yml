@@ -78,6 +78,8 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # pass selected env vars to the remote shell so docker login works
+          envs: RUNNER_GITHUB_TOKEN,RUNNER_GH_ACTOR
           debug: true
           script: |
             cd /home/github-actions/codered-astra

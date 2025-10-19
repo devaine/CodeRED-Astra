@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web-app:
     image: ghcr.io/${REPO_NAME_LOWER}/web-app:${IMAGE_TAG}
