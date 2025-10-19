@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "daisyui";
 
 .dark {
   --paragraph: 235, 236, 239;

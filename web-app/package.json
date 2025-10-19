@@ -18,6 +18,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
+    "class-variance-authority": "^0.7.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -31,11 +32,13 @@
     "react-markdown": "^10.1.0",
     "react-router": "^7.9.4",
     "react-router-dom": "^7.9.4",
+    "shadcn-ui": "^0.9.5",
     "vite-jsconfig-paths": "^2.0.1"
   },
   "packageManager": ">=npm@10.9.0",
   "devDependencies": {
     "@eslint/js": "^9.38.0",
+    "daisyui": "^5.3.7",
     "eslint": "^9.38.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.5",
