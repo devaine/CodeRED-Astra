@@ -80,6 +80,5 @@ RUN chown appuser:appuser /usr/local/bin/rust-engine \
     && chown appuser:appuser /var/log/astra-errors.log
 
 EXPOSE 8000
-USER appuser
 # Redirect all output to /var/log/astra-errors.log for easy monitoring
 ENTRYPOINT ["/bin/sh", "-c", "/usr/local/bin/rust-engine >> /var/log/astra-errors.log 2>&1"]
