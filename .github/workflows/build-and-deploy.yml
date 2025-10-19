@@ -4,7 +4,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "rust-dev"]
 
 jobs:
   build-and-deploy:
