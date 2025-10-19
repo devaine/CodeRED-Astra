@@ -3,7 +3,7 @@ import DownButton from "src/components/ui/button/down-button";
 import { motion } from "motion/react";
 import { BotMessageSquare } from "lucide-react";
 
-export default function MessageInput({ onSend }) {
+export default function MessageInput({ onSend, onMessage }) {
   const [text, setText] = useState("");
   const textareaRef = useRef(null);
 
@@ -12,10 +12,54 @@ export default function MessageInput({ onSend }) {
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   }, []);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!text.trim()) return;
+
+    // send user message locally
     onSend(text.trim());
+
+    // create query on backend
+    try {
+      if (onMessage)
+        onMessage("assistant", "Queued: sending request to server...");
+      const createRes = await fetch(`/api/query/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: text, top_k: 5 }),
+      });
+      const createJson = await createRes.json();
+      const id = createJson.id;
+      if (!id) throw new Error("no id returned");
+
+      // poll status
+      let status = "Queued";
+      if (onMessage) onMessage("assistant", `Status: ${status}`);
+      while (status !== "Completed" && status !== "Failed") {
+        await new Promise((r) => setTimeout(r, 1000));
+        const sRes = await fetch(`/api/query/status?id=${id}`);
+        const sJson = await sRes.json();
+        status = sJson.status;
+        if (onMessage) onMessage("assistant", `Status: ${status}`);
+        if (status === "Cancelled") break;
+      }
+
+      if (status === "Completed") {
+        const resultRes = await fetch(`/api/query/result?id=${id}`);
+        const resultJson = await resultRes.json();
+        const final =
+          resultJson?.result?.final_answer ||
+          JSON.stringify(resultJson?.result || {});
+        if (onMessage) onMessage("assistant", final);
+      } else {
+        if (onMessage)
+          onMessage("assistant", `Query status ended as: ${status}`);
+      }
+    } catch (err) {
+      console.error(err);
+      if (onMessage) onMessage("assistant", `Error: ${err.message}`);
+    }
+
     setText("");
   }
 
